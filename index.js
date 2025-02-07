@@ -101,5 +101,5 @@ app.use(express.json({
   timeout: 30000
 }));
 
-module.exports = { server, app };
+module.exports = app;
 
