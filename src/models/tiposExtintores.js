@@ -12,7 +12,7 @@ const tiposExtintores = new Schema({
 });
 
 // Middleware `pre` para ajustar las fechas antes de guardar
-encuestaInspeccion.pre('save', function(next) {
+tiposExtintores.pre('save', function(next) {
     // Convertir las fechas a la zona horaria deseada antes de guardarlas
     if (this.createdAt) {
       this.createdAt = moment(this.createdAt).tz('America/Mexico_City').toDate(); // Ajusta a la zona horaria deseada
