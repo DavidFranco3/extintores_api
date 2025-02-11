@@ -11,21 +11,19 @@ const usuarios = new Schema({
     departamento: { type: String },
     estado: { type: String },
 }, {
-    timestamps: true
+    timestamps: true // Mongoose se encargará de generar createdAt y updatedAt automáticamente
 });
 
-// Middleware `pre` para ajustar las fechas antes de guardar
+// Middleware `pre` para ajustar las fechas antes de devolverlas (si es necesario)
+usuarios.methods.formatDates = function() {
+    this.createdAt = moment(this.createdAt).tz('America/Mexico_City').toDate();
+    this.updatedAt = moment(this.updatedAt).tz('America/Mexico_City').toDate();
+};
+
+// Middleware `pre` para ajustar las fechas antes de guardarlas (si necesitas hacer alguna transformación al momento de guardar)
 usuarios.pre('save', function(next) {
-    // Convertir las fechas a la zona horaria deseada antes de guardarlas
-    if (this.createdAt) {
-      this.createdAt = moment(this.createdAt).tz('America/Mexico_City').toDate(); // Ajusta a la zona horaria deseada
-    }
-  
-    if (this.updatedAt) {
-      this.updatedAt = moment(this.updatedAt).tz('America/Mexico_City').toDate(); // Ajusta a la zona horaria deseada
-    }
-  
-    next(); // Llama al siguiente middleware o al proceso de guardado
-  });
+    // Si necesitas hacer ajustes antes de guardar, puedes hacerlo aquí
+    next();
+});
 
 module.exports = mongoose.model("usuarios", usuarios, "usuarios");
