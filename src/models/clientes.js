@@ -6,8 +6,8 @@ const { Schema } = mongoose;
 const clientes = new Schema(
   {
     nombre: { type: String },
-    correos: { type: Array, default: [] },
-    telefonos: { type: Array, default: [] },
+    correo: { type: String },
+    telefono: { type: String },
     empresa: { type: String },
     direccion: {
       calle: { type: String },
@@ -28,15 +28,15 @@ const clientes = new Schema(
 
 // Middleware `pre` para ajustar las fechas antes de guardar
 // Middleware `pre` para ajustar las fechas antes de devolverlas (si es necesario)
-clientes.methods.formatDates = function() {
-    this.createdAt = moment(this.createdAt).tz('America/Mexico_City').toDate();
-    this.updatedAt = moment(this.updatedAt).tz('America/Mexico_City').toDate();
+clientes.methods.formatDates = function () {
+  this.createdAt = moment(this.createdAt).tz('America/Mexico_City').toDate();
+  this.updatedAt = moment(this.updatedAt).tz('America/Mexico_City').toDate();
 };
 
 // Middleware `pre` para ajustar las fechas antes de guardarlas (si necesitas hacer alguna transformación al momento de guardar)
-clientes.pre('save', function(next) {
-    // Si necesitas hacer ajustes antes de guardar, puedes hacerlo aquí
-    next();
+clientes.pre('save', function (next) {
+  // Si necesitas hacer ajustes antes de guardar, puedes hacerlo aquí
+  next();
 });
 
 module.exports = mongoose.model("clientes", clientes, "clientes");
