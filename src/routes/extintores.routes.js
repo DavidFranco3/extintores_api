@@ -18,21 +18,33 @@ router.post("/registro", async (req, res) => {
 
 // Obtener todos los usuarios
 router.get("/listar", async (req, res) => {
-    extintores
-        .find({ estado: "true" })
-        .sort({ _id: -1 })
-        .populate("idTipoExtintor", "nombre descripcion estado") // Solo seleccionamos los campos que necesitas del tipo de extintor
-        .then((data) => {
-            // Aquí agregamos un campo `tipoExtintor` con la información poblada
-            const result = data.map((extintor) => ({
-                ...extintor.toObject(), // Convertimos el documento a un objeto normal
-                tipoExtintor: extintor.idTipoExtintor // Agregamos el campo separado
-            }));
-            res.json(result);
-        })
-        .catch((error) => res.json({ message: error }));
-});
+    try {
+        const data = await extintores.aggregate([
+            {
+                $match: { estado: "true" } // Filtrar solo los activos
+            },
+            {
+                $lookup: {
+                    from: "tiposExtintores", // Nombre de la colección en la BD
+                    localField: "idTipoExtintor", // Campo en `extintores`
+                    foreignField: "_id", // Campo en `tiposExtintores`
+                    as: "tipoExtintor" // Nombre del campo resultante
+                }
+            },
+            {
+                $unwind: { path: "$tipoExtintor", preserveNullAndEmptyArrays: true } 
+                // Desestructura el array generado por $lookup y evita errores si no hay coincidencias
+            },
+            {
+                $sort: { _id: -1 } // Ordenar por ID de forma descendente
+            }
+        ]);
 
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ message: "Error al obtener los extintores", error });
+    }
+});
 
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {
