@@ -8,7 +8,6 @@ const extintores = new Schema({
     idTipoExtintor: { type: String },
     capacidad: { type: String },
     ultimaRecarga: { type: String },
-    ubicacion: { type: String },
     estado: { type: String }
 }, {
     timestamps: true

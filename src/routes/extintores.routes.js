@@ -57,10 +57,10 @@ router.put("/deshabilitar/:id", async (req, res) => {
 // Actualizar datos de la orden de trabajo
 router.put("/actualizar/:id", async (req, res) => {
     const { id } = req.params;
-    const { nombre, descripcion } = req.body;
+    const { numeroSerie, idTipoExtintor, capacidad, ultimaRecarga } = req.body;
 
     await extintores
-        .updateOne({ _id: id }, { $set: { nombre, descripcion } })
+        .updateOne({ _id: id }, { $set: { numeroSerie, idTipoExtintor, capacidad, ultimaRecarga } })
         .then((data) => res.status(200).json({ mensaje: "Datos del extintor actualizados" }))
         .catch((error) => res.json({ message: error }));
 });
