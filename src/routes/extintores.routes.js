@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const extintores = require("../models/extintores");
+const { ObjectId } = require("mongoose").Types;
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
@@ -21,19 +22,23 @@ router.get("/listar", async (req, res) => {
     try {
         const data = await extintores.aggregate([
             {
-                $match: { estado: "true" } // Filtrar solo los activos
+                $match: { estado: "true" } // Filtrar solo extintores activos
+            },
+            {
+                $addFields: {
+                    idTipoExtintorObj: { $toObjectId: "$idTipoExtintor" } // Convertir idTipoExtintor a ObjectId
+                }
             },
             {
                 $lookup: {
                     from: "tiposExtintores", // Nombre de la colección en la BD
-                    localField: "idTipoExtintor", // Campo en `extintores`
+                    localField: "idTipoExtintorObj", // Usamos el campo convertido a ObjectId
                     foreignField: "_id", // Campo en `tiposExtintores`
-                    as: "tipoExtintor" // Nombre del campo resultante
+                    as: "tipoExtintor"
                 }
             },
             {
-                $unwind: { path: "$tipoExtintor", preserveNullAndEmptyArrays: true } 
-                // Desestructura el array generado por $lookup y evita errores si no hay coincidencias
+                $unwind: { path: "$tipoExtintor", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
             },
             {
                 $sort: { _id: -1 } // Ordenar por ID de forma descendente
