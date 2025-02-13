@@ -5,7 +5,7 @@ const { Schema } = mongoose;
 // modelo de la coleccion usuarios
 const extintores = new Schema({
     numeroSerie: { type: String },
-    idTipoExtintor: { type: String },
+    idTipoExtintor: { type: mongoose.Schema.Types.ObjectId, ref: 'tiposExtintores' },
     capacidad: { type: String },
     ultimaRecarga: { type: String },
     estado: { type: String }
@@ -14,13 +14,13 @@ const extintores = new Schema({
 });
 
 // Middleware `pre` para ajustar las fechas antes de devolverlas (si es necesario)
-extintores.methods.formatDates = function() {
+extintores.methods.formatDates = function () {
     this.createdAt = moment(this.createdAt).tz('America/Mexico_City').toDate();
     this.updatedAt = moment(this.updatedAt).tz('America/Mexico_City').toDate();
 };
 
 // Middleware `pre` para ajustar las fechas antes de guardarlas (si necesitas hacer alguna transformación al momento de guardar)
-extintores.pre('save', function(next) {
+extintores.pre('save', function (next) {
     // Si necesitas hacer ajustes antes de guardar, puedes hacerlo aquí
     next();
 });

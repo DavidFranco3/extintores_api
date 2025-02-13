@@ -21,9 +21,18 @@ router.get("/listar", async (req, res) => {
     extintores
         .find({ estado: "true" })
         .sort({ _id: -1 })
-        .then((data) => res.json(data))
+        .populate("idTipoExtintor", "nombre descripcion estado") // Solo seleccionamos los campos que necesitas del tipo de extintor
+        .then((data) => {
+            // Aquí agregamos un campo `tipoExtintor` con la información poblada
+            const result = data.map((extintor) => ({
+                ...extintor.toObject(), // Convertimos el documento a un objeto normal
+                tipoExtintor: extintor.idTipoExtintor // Agregamos el campo separado
+            }));
+            res.json(result);
+        })
         .catch((error) => res.json({ message: error }));
 });
+
 
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {
