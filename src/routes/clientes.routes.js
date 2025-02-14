@@ -60,7 +60,7 @@ router.put("/actualizar/:id", async (req, res) => {
     const { nombre, correos, telefonos, empresa, direccion } = req.body;
 
     await clientes
-        .updateOne({ _id: id }, { $set: { nombre, correos, telefonos, empresa, direccion } })
+        .updateOne({ _id: id }, { $set: { nombre, correos, telefonos, direccion } })
         .then((data) => res.status(200).json({ mensaje: "Datos del cliente actualizados" }))
         .catch((error) => res.json({ message: error }));
 });

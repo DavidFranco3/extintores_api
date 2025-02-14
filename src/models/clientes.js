@@ -8,7 +8,6 @@ const clientes = new Schema(
     nombre: { type: String },
     correo: { type: String },
     telefono: { type: String },
-    empresa: { type: String },
     direccion: {
       calle: { type: String },
       nExterior: { type: String },
