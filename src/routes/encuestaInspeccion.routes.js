@@ -18,11 +18,48 @@ router.post("/registro", async (req, res) => {
 
 // Obtener todos los usuarios
 router.get("/listar", async (req, res) => {
-    encuestaInspeccion
-        .find({ estado: "true" })
-        .sort({ _id: -1 })
-        .then((data) => res.json(data))
-        .catch((error) => res.json({ message: error }));
+    try {
+        const data = await encuestaInspeccion.aggregate([
+            {
+                $match: { estado: "true" } // Filtrar solo encuestas activas
+            },
+            {
+                $addFields: {
+                    idFrecuenciaObj: { $toObjectId: "$idFrecuencia" }, // Convertir idFrecuencia a ObjectId
+                    idClasificacionObj: { $toObjectId: "$idClasificacion" } // Convertir idClasificacion a ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "frecuencias", // Colección de frecuencias
+                    localField: "idFrecuenciaObj",
+                    foreignField: "_id",
+                    as: "frecuencia"
+                }
+            },
+            {
+                $unwind: { path: "$frecuencia", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "clasificaciones", // Colección de clasificaciones
+                    localField: "idClasificacionObj",
+                    foreignField: "_id",
+                    as: "clasificacion"
+                }
+            },
+            {
+                $unwind: { path: "$clasificacion", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $sort: { _id: -1 } // Ordenar por ID de forma descendente
+            }
+        ]);
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ message: "Error al obtener las encuestas", error });
+    }
 });
 
 // Obtener un usuario en especifico
