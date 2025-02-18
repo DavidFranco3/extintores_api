@@ -94,10 +94,10 @@ router.put("/deshabilitar/:id", async (req, res) => {
 // Actualizar datos de la orden de trabajo
 router.put("/actualizar/:id", async (req, res) => {
     const { id } = req.params;
-    const { nombre, correos, telefonos, empresa, direccion } = req.body;
+    const { nombre, idFrecuencia, idClasificacion, preguntas } = req.body;
 
     await encuestaInspeccion
-        .updateOne({ _id: id }, { $set: { nombre, correos, telefonos, empresa, direccion } })
+        .updateOne({ _id: id }, { $set: { nombre, idFrecuencia, idClasificacion, preguntas } })
         .then((data) => res.status(200).json({ mensaje: "Datos de la encuesta de inspeccion actualizados" }))
         .catch((error) => res.json({ message: error }));
 });
