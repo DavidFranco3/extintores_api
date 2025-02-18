@@ -8,7 +8,7 @@ const inspecciones = new Schema({
   idUsuario: { type: String },
   idCliente: { type: String },
   idEncuesta: { type: String },
-  encuesta: { type: String, default: [] },
+  encuesta: { type: Array, default: [] },
   imagenes: { type: Array, default: [] },
   comentarios: { type: String },
   estado: { type: String },
