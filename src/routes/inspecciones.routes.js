@@ -57,10 +57,10 @@ router.put("/deshabilitar/:id", async (req, res) => {
 // Actualizar datos de la orden de trabajo
 router.put("/actualizar/:id", async (req, res) => {
     const { id } = req.params;
-    const { nombre, descripcion } = req.body;
+    const { idUsuario, idCliente, idEncuesta, encuesta, imagenes, comentarios } = req.body;
 
     await inspecciones
-        .updateOne({ _id: id }, { $set: { nombre, descripcion } })
+        .updateOne({ _id: id }, { $set: { idUsuario, idCliente, idEncuesta, encuesta, imagenes, comentarios } })
         .then((data) => res.status(200).json({ mensaje: "Datos de la clasificacion actualizados" }))
         .catch((error) => res.json({ message: error }));
 });
