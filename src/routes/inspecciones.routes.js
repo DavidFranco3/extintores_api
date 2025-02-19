@@ -18,11 +18,60 @@ router.post("/registro", async (req, res) => {
 
 // Obtener todos los usuarios
 router.get("/listar", async (req, res) => {
-    inspecciones
-        .find({ estado: "true" })
-        .sort({ _id: -1 })
-        .then((data) => res.json(data))
-        .catch((error) => res.json({ message: error }));
+    try {
+        const data = await inspecciones.aggregate([
+            {
+                $match: { estado: "true" } // Filtrar solo encuestas activas
+            },
+            {
+                $addFields: {
+                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idFrecuencia a ObjectId
+                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idClasificacion a ObjectId
+                    idEncuestaObj: { $toObjectId: "$idEncuesta" } // Convertir idClasificacion a ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "usuarios", // Colección de frecuencias
+                    localField: "idUsuarioObj",
+                    foreignField: "_id",
+                    as: "usuario"
+                }
+            },
+            {
+                $unwind: { path: "$usuario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "clientes", // Colección de clasificaciones
+                    localField: "idClienteObj",
+                    foreignField: "_id",
+                    as: "cliente"
+                }
+            },
+            {
+                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "encuestaInspeccion", // Colección de clasificaciones
+                    localField: "idEncuestaObj",
+                    foreignField: "_id",
+                    as: "encuesta"
+                }
+            },
+            {
+                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $sort: { _id: -1 } // Ordenar por ID de forma descendente
+            }
+        ]);
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ message: "Error al obtener las encuestas", error });
+    }
 });
 
 // Obtener un usuario en especifico
