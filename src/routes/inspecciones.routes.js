@@ -88,36 +88,33 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
         doc.moveDown();
 
-        // Tabla de preguntas, observaciones y respuestas
-        doc.fontSize(14).text('Cuestionario:', { underline: true });
-        doc.moveDown();
+        // Definimos la tabla para preguntas, observaciones y respuestas
+        const columnWidths = [150, 150, 150]; // Ancho de las tres columnas
+        const startX = 50; // X inicial de la tabla
+        const startY = doc.y; // Y inicial para la tabla
 
-        // Definir las columnas y el ancho
-        const columnWidth = [200, 150, 150]; // Ancho para las tres columnas
-        const tableTop = doc.y; // Guardamos la posición inicial para la tabla
-        const rowHeight = 20; // Altura de cada fila
-        const spacing = 5; // Espacio entre filas
+        // Dibujamos el encabezado de la tabla
+        doc.fontSize(12)
+            .text('Pregunta', startX, startY, { width: columnWidths[0], align: 'center' })
+            .text('Observaciones', startX + columnWidths[0], startY, { width: columnWidths[1], align: 'center' })
+            .text('Respuesta', startX + columnWidths[0] + columnWidths[1], startY, { width: columnWidths[2], align: 'center' });
 
-        // Encabezado de la tabla
-        doc.fontSize(12).text('Pregunta', columnWidth[0], tableTop, { continued: true });
-        doc.text('Observaciones', columnWidth[1], tableTop, { continued: true });
-        doc.text('Respuesta', columnWidth[2], tableTop);
         doc.moveDown(0.5); // Espacio entre el encabezado y las filas
 
-        // Dibujar las filas de la tabla
+        // Dibujamos las filas de la tabla
         inspeccion.encuesta.forEach((pregunta, index) => {
-            const questionText = pregunta.pregunta.length > 45 ? pregunta.pregunta.substring(0, 42) + '...' : pregunta.pregunta;
-            const observationsText = pregunta.observaciones ? pregunta.observaciones : 'Sin observaciones';
+            const rowHeight = 30;
+            const questionText = pregunta.pregunta.length > 50 ? pregunta.pregunta.substring(0, 50) + '...' : pregunta.pregunta;
+            const observationsText = pregunta.observaciones || 'Sin observaciones';
             const answerText = pregunta.respuesta;
 
-            // Asegurarse de que el texto no se desborde
-            doc.text(questionText, columnWidth[0], doc.y, { continued: true });
-            doc.text(observationsText, columnWidth[1], doc.y, { continued: true });
-            doc.text(answerText, columnWidth[2], doc.y);
-            doc.moveDown(spacing); // Espacio entre las filas
-        });
+            doc.fontSize(10)
+                .text(questionText, startX, doc.y, { width: columnWidths[0], height: rowHeight })
+                .text(observationsText, startX + columnWidths[0], doc.y, { width: columnWidths[1], height: rowHeight })
+                .text(answerText, startX + columnWidths[0] + columnWidths[1], doc.y, { width: columnWidths[2], height: rowHeight });
 
-        doc.moveDown(); // Espacio después de la tabla
+            doc.moveDown(1); // Espacio entre filas
+        });
 
         // Comentarios
         doc.fontSize(14).text('Comentarios:', { underline: true });
