@@ -214,7 +214,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
         // Contenido de la tabla
         inspeccion.encuesta.forEach((pregunta, index) => {
             const preguntaTexto = pregunta.pregunta;
-            const observaciones = pregunta.observaciones || 'N/A';
+            const observaciones = pregunta.observaciones || 'Sin comentarios';
             const respuesta = pregunta.respuesta.toLowerCase() === 'sí' ? 'Sí' : 'No';
 
             // Dividir la pregunta en varias líneas si es necesario
