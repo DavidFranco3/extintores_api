@@ -88,22 +88,29 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
         doc.moveDown();
 
-        // Preguntas y respuestas en formato tabla
+        // Tabla de preguntas, observaciones y respuestas
         doc.fontSize(14).text('Cuestionario:', { underline: true });
         doc.moveDown();
 
-        // Definir los encabezados de la tabla
-        doc.fontSize(12).text('Pregunta', { continued: true, underline: true }).text(' | ', { continued: true });
-        doc.text('Observaciones', { continued: true, underline: true }).text(' | ', { continued: true });
-        doc.text('Respuesta', { underline: true });
+        // Definir las columnas y el ancho
+        const columnWidth = [300, 150, 150]; // Ancho para las tres columnas
+        const tableTop = doc.y; // Guardamos la posición inicial para la tabla
 
-        // Añadir las preguntas, observaciones y respuestas en formato de tabla
+        // Encabezado de la tabla
+        doc.fontSize(12).text('Pregunta', columnWidth[0], tableTop, { continued: true });
+        doc.text('Observaciones', columnWidth[1], tableTop, { continued: true });
+        doc.text('Respuesta', columnWidth[2], tableTop);
+        doc.moveDown();
+
+        // Dibujar las filas de la tabla
         inspeccion.encuesta.forEach((pregunta, index) => {
-            doc.moveDown(0.5); // Espacio entre filas
-            doc.text(`${pregunta.pregunta} | ${pregunta.observaciones || 'Sin observaciones'} | ${pregunta.respuesta}`);
+            doc.text(pregunta.pregunta, columnWidth[0], doc.y, { continued: true });
+            doc.text(pregunta.observaciones || 'Sin observaciones', columnWidth[1], doc.y, { continued: true });
+            doc.text(pregunta.respuesta, columnWidth[2], doc.y);
+            doc.moveDown(0.5); // Espacio entre las filas
         });
 
-        doc.moveDown(); // Agregar espacio después de la tabla
+        doc.moveDown(); // Espacio después de la tabla
 
         // Comentarios
         doc.fontSize(14).text('Comentarios:', { underline: true });
@@ -117,7 +124,6 @@ router.get('/generar-pdf/:id', async (req, res) => {
         res.status(500).json({ message: 'Error interno del servidor', error });
     }
 });
-
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
