@@ -57,7 +57,7 @@ router.get("/listar", async (req, res) => {
                     from: "encuestaInspeccion", // Colección de clasificaciones
                     localField: "idEncuestaObj",
                     foreignField: "_id",
-                    as: "encuesta"
+                    as: "cuestionario"
                 }
             },
             {
