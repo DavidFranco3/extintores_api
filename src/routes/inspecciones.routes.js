@@ -3,24 +3,109 @@ const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const PDFDocument = require('pdfkit');
 
-router.get('/generar-pdf/:id', (req, res) => {
-    const { id } = req.params;
-    // Crear un nuevo documento PDF
-    const doc = new PDFDocument();
+router.get('/generar-pdf/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    // Configurar encabezados HTTP para la respuesta
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
+        // Convertir el id a ObjectId
+        const objectId = new mongoose.Types.ObjectId(id);
 
-    // Escribir contenido en el PDF
-    doc.text('¡Hola, este es un PDF generado en Express.js!' + id, {
-        align: 'center',
-        fontSize: 20
-    });
+        // Consulta con agregación y lookups
+        const data = await Inspecciones.aggregate([
+            {
+                $match: { _id: objectId }
+            },
+            {
+                $addFields: {
+                    idUsuarioObj: { $toObjectId: "$idUsuario" },
+                    idClienteObj: { $toObjectId: "$idCliente" },
+                    idEncuestaObj: { $toObjectId: "$idEncuesta" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "usuarios",
+                    localField: "idUsuarioObj",
+                    foreignField: "_id",
+                    as: "usuario"
+                }
+            },
+            { $unwind: { path: "$usuario", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "clientes",
+                    localField: "idClienteObj",
+                    foreignField: "_id",
+                    as: "cliente"
+                }
+            },
+            { $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "encuestaInspeccion",
+                    localField: "idEncuestaObj",
+                    foreignField: "_id",
+                    as: "cuestionario"
+                }
+            },
+            { $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } }
+        ]);
 
-    // Finalizar y enviar el PDF como respuesta
-    doc.pipe(res);
-    doc.end();
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Registro no encontrado' });
+        }
+
+        const inspeccion = data[0];
+
+        // Crear un nuevo documento PDF
+        const doc = new PDFDocument();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="inspeccion_${id}.pdf"`);
+
+        doc.pipe(res);
+
+        // Título del documento
+        doc.fontSize(20).text(`Inspección ID: ${inspeccion._id}`, { align: 'center' });
+        doc.moveDown();
+
+        // Información del Usuario
+        doc.fontSize(14).text('Información del Usuario:', { underline: true });
+        doc.fontSize(12).text(`Nombre: ${inspeccion.usuario.nombre}`);
+        doc.text(`Email: ${inspeccion.usuario.email}`);
+        doc.moveDown();
+
+        // Información del Cliente
+        doc.fontSize(14).text('Información del Cliente:', { underline: true });
+        doc.fontSize(12).text(`Nombre: ${inspeccion.cliente.nombre}`);
+        doc.text(`Correo: ${inspeccion.cliente.correo}`);
+        doc.text(`Teléfono: ${inspeccion.cliente.telefono}`);
+        doc.text(`Dirección: ${inspeccion.cliente.direccion.calle}, ${inspeccion.cliente.direccion.nExterior}, ${inspeccion.cliente.direccion.colonia}`);
+        doc.moveDown();
+
+        // Información del Cuestionario
+        doc.fontSize(14).text('Cuestionario:', { underline: true });
+        doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
+        doc.moveDown();
+
+        // Preguntas y respuestas
+        doc.fontSize(14).text('Respuestas:', { underline: true });
+        inspeccion.encuesta.forEach((pregunta, index) => {
+            doc.fontSize(12).text(`${index + 1}. ${pregunta.pregunta}`);
+            doc.text(`   Respuesta: ${pregunta.respuesta}`);
+            doc.moveDown(0.5);
+        });
+
+        // Comentarios
+        doc.fontSize(14).text('Comentarios:', { underline: true });
+        doc.fontSize(12).text(inspeccion.comentarios || 'Sin comentarios');
+
+        // Finalizar el PDF
+        doc.end();
+
+    } catch (error) {
+        console.error('Error al generar el PDF:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
 });
 
 // Registro de usuarios
