@@ -11,7 +11,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
         const objectId = new mongoose.Types.ObjectId(id);
 
         // Consulta con agregación y lookups
-        const data = await Inspecciones.aggregate([
+        const data = await inspecciones.aggregate([
             {
                 $match: { _id: objectId }
             },
