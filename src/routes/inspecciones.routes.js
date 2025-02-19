@@ -84,12 +84,12 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.moveDown();
 
         // Información del Cuestionario
-        doc.fontSize(14).text('Cuestionario:', { underline: true });
+        doc.fontSize(14).text('Encuesta:', { underline: true });
         doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
         doc.moveDown();
 
         // Preguntas y respuestas
-        doc.fontSize(14).text('Respuestas:', { underline: true });
+        doc.fontSize(14).text('Cuestionario:', { underline: true });
         inspeccion.encuesta.forEach((pregunta, index) => {
             doc.fontSize(12).text(`${index + 1}. ${pregunta.pregunta}`);
             doc.text(`   Respuesta: ${pregunta.respuesta}`);
