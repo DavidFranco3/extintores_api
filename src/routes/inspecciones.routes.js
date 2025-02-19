@@ -95,7 +95,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
         // Establecemos un borde simple para la tabla
         const tableX = 50;
         const tableY = doc.y;
-        const rowHeight = 20;
+        const rowHeight = 30; // Ajustamos la altura de las filas para mejor alineación
         const columnWidth = [200, 200, 200]; // Ancho para cada columna
 
         // Encabezado de la tabla
@@ -109,22 +109,22 @@ router.get('/generar-pdf/:id', async (req, res) => {
 
         // Añadir las filas de las preguntas, observaciones y respuestas
         inspeccion.encuesta.forEach((pregunta, index) => {
-            // Pregunta (ajustada para que no se desborde)
-            doc.text(pregunta.pregunta, tableX, doc.y, { width: columnWidth[0], align: 'left' });
-            
-            // Observaciones (ajustada para que no se desborde)
-            doc.text(pregunta.observaciones || 'Sin observaciones', tableX + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
-            
-            // Respuesta (ajustada para que no se desborde)
-            doc.text(pregunta.respuesta, tableX + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
+            // Ajustar el texto en la columna de pregunta
+            doc.text(pregunta.pregunta, tableX, doc.y, { width: columnWidth[0], align: 'left', lineBreak: true });
 
-            // Dibuja líneas de las celdas
+            // Ajustar el texto en la columna de observaciones
+            doc.text(pregunta.observaciones || 'Sin observaciones', tableX + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left', lineBreak: true });
+
+            // Ajustar el texto en la columna de respuesta
+            doc.text(pregunta.respuesta, tableX + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left', lineBreak: true });
+
+            // Dibuja las líneas de las celdas
             doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0], doc.y).stroke();
             doc.moveTo(tableX + columnWidth[0], doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1], doc.y).stroke();
             doc.moveTo(tableX + columnWidth[0] + columnWidth[1], doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
             // Salto a la siguiente fila
-            doc.moveDown(rowHeight);
+            doc.moveDown(rowHeight);  // Mantén un espacio consistente
         });
 
         // Línea separadora inferior
@@ -142,7 +142,6 @@ router.get('/generar-pdf/:id', async (req, res) => {
         res.status(500).json({ message: 'Error interno del servidor', error });
     }
 });
-
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
