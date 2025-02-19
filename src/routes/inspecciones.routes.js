@@ -260,7 +260,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
         }
 
         // Comentarios Generales (Sección independiente)
-        doc.moveDown(6);
+        doc.moveDown(4);
         doc.fontSize(12).text('Comentarios Generales:', centerX, doc.y, { align: 'left' }); // Título de comentarios
         doc.fontSize(12).text(inspeccion.comentarios || 'Sin comentarios', centerX, doc.y, { align: 'left' }); // Comentarios
 
