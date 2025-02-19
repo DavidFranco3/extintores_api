@@ -104,18 +104,30 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.text('Respuesta', tableX + columnWidth[0] + columnWidth[1], tableY);
         doc.moveDown();
 
-        // Línea separadora
+        // Línea separadora superior
         doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
         // Añadir las filas de las preguntas, observaciones y respuestas
         inspeccion.encuesta.forEach((pregunta, index) => {
-            doc.text(pregunta.pregunta, tableX, doc.y);
-            doc.text(pregunta.observaciones || 'Sin observaciones', tableX + columnWidth[0], doc.y);
-            doc.text(pregunta.respuesta, tableX + columnWidth[0] + columnWidth[1], doc.y);
+            // Pregunta (ajustada para que no se desborde)
+            doc.text(pregunta.pregunta, tableX, doc.y, { width: columnWidth[0], align: 'left' });
+            
+            // Observaciones (ajustada para que no se desborde)
+            doc.text(pregunta.observaciones || 'Sin observaciones', tableX + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
+            
+            // Respuesta (ajustada para que no se desborde)
+            doc.text(pregunta.respuesta, tableX + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
+
+            // Dibuja líneas de las celdas
+            doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0], doc.y).stroke();
+            doc.moveTo(tableX + columnWidth[0], doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1], doc.y).stroke();
+            doc.moveTo(tableX + columnWidth[0] + columnWidth[1], doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
+
+            // Salto a la siguiente fila
             doc.moveDown(rowHeight);
         });
 
-        // Línea final de la tabla
+        // Línea separadora inferior
         doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
         // Comentarios
@@ -130,6 +142,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
         res.status(500).json({ message: 'Error interno del servidor', error });
     }
 });
+
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
