@@ -13,9 +13,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
 
         // Consulta con agregación y lookups
         const data = await inspecciones.aggregate([
-            {
-                $match: { _id: objectId }
-            },
+            { $match: { _id: objectId } },
             {
                 $addFields: {
                     idUsuarioObj: { $toObjectId: "$idUsuario" },
@@ -88,47 +86,45 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
         doc.moveDown();
 
-        // Preguntas, observaciones y respuestas en formato de tabla
+        // Tabla de preguntas, observaciones y respuestas
         doc.fontSize(14).text('Cuestionario:', { underline: true });
         doc.moveDown();
 
-        // Establecemos un borde simple para la tabla
-        const tableX = 50;
-        const tableY = doc.y;
-        const rowHeight = 30; // Ajustamos la altura de las filas para mejor alineación
+        // Establecer el ancho de las columnas
         const columnWidth = [200, 200, 200]; // Ancho para cada columna
+        const rowHeight = 20; // Altura de las filas
 
         // Encabezado de la tabla
-        doc.fontSize(12).text('Pregunta', tableX, tableY);
-        doc.text('Observaciones', tableX + columnWidth[0], tableY);
-        doc.text('Respuesta', tableX + columnWidth[0] + columnWidth[1], tableY);
+        doc.fontSize(12).text('Pregunta', 50, doc.y, { width: columnWidth[0], align: 'left' });
+        doc.text('Observaciones', 50 + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
+        doc.text('Respuesta', 50 + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
         doc.moveDown();
 
         // Línea separadora superior
-        doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
+        doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
         // Añadir las filas de las preguntas, observaciones y respuestas
-        inspeccion.encuesta.forEach((pregunta, index) => {
+        inspeccion.encuesta.forEach((pregunta) => {
             // Ajustar el texto en la columna de pregunta
-            doc.text(pregunta.pregunta, tableX, doc.y, { width: columnWidth[0], align: 'left', lineBreak: true });
+            doc.text(pregunta.pregunta, 50, doc.y, { width: columnWidth[0], align: 'left' });
 
             // Ajustar el texto en la columna de observaciones
-            doc.text(pregunta.observaciones || 'Sin observaciones', tableX + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left', lineBreak: true });
+            doc.text(pregunta.observaciones || 'Sin observaciones', 50 + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
 
             // Ajustar el texto en la columna de respuesta
-            doc.text(pregunta.respuesta, tableX + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left', lineBreak: true });
+            doc.text(pregunta.respuesta, 50 + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
 
             // Dibuja las líneas de las celdas
-            doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0], doc.y).stroke();
-            doc.moveTo(tableX + columnWidth[0], doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1], doc.y).stroke();
-            doc.moveTo(tableX + columnWidth[0] + columnWidth[1], doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
+            doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0], doc.y).stroke();
+            doc.moveTo(50 + columnWidth[0], doc.y).lineTo(50 + columnWidth[0] + columnWidth[1], doc.y).stroke();
+            doc.moveTo(50 + columnWidth[0] + columnWidth[1], doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
             // Salto a la siguiente fila
             doc.moveDown(rowHeight);  // Mantén un espacio consistente
         });
 
         // Línea separadora inferior
-        doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
+        doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
         // Comentarios
         doc.fontSize(14).text('Comentarios:', { underline: true });
