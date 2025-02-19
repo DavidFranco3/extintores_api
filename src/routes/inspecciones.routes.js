@@ -1,271 +1,89 @@
 const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
-const PDFDocument = require('pdfkit');
-const { ObjectId } = require("mongoose").Types;
+const nodeMailer = require("nodemailer");
+const { obtenerDatosInspeccion, generarPDFInspeccion } = require('../utils/pdfGenerador'); // Importamos la función
 
+// Ruta para generar PDF
 router.get('/generar-pdf/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const objectId = new ObjectId(id);
 
-        // Consulta con agregación y lookups
-        const data = await inspecciones.aggregate([
-            { $match: { _id: objectId } },
-            {
-                $addFields: {
-                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idUsuario a ObjectId
-                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idCliente a ObjectId
-                    idEncuestaObj: { $toObjectId: "$idEncuesta" }, // Convertir idEncuesta a ObjectId
-                }
-            },
-            {
-                $lookup: {
-                    from: "usuarios", // Colección de usuarios
-                    localField: "idUsuarioObj",
-                    foreignField: "_id",
-                    as: "usuario"
-                }
-            },
-            {
-                $unwind: { path: "$usuario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-            {
-                $lookup: {
-                    from: "clientes", // Colección de clientes
-                    localField: "idClienteObj",
-                    foreignField: "_id",
-                    as: "cliente"
-                }
-            },
-            {
-                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-            {
-                $lookup: {
-                    from: "encuestaInspeccion", // Colección de encuestas
-                    localField: "idEncuestaObj",
-                    foreignField: "_id",
-                    as: "cuestionario"
-                }
-            },
-            {
-                $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-            {
-                $addFields: {
-                    "cuestionario.idFrecuenciaObj": { $toObjectId: "$cuestionario.idFrecuencia" }, // Convertir idFrecuencia dentro de cuestionario a ObjectId
-                    "cuestionario.idClasificacionObj": { $toObjectId: "$cuestionario.idClasificacion" } // Convertir idClasificacion dentro de cuestionario a ObjectId
-                }
-            },
-            {
-                $lookup: {
-                    from: "frecuencias", // Colección de frecuencias
-                    localField: "cuestionario.idFrecuenciaObj", // Ahora usando el ObjectId de idFrecuencia
-                    foreignField: "_id",
-                    as: "cuestionario.frecuencia"
-                }
-            },
-            {
-                $unwind: { path: "$cuestionario.frecuencia", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-            {
-                $lookup: {
-                    from: "clasificaciones", // Colección de clasificaciones
-                    localField: "cuestionario.idClasificacionObj", // Ahora usando el ObjectId de idClasificacion
-                    foreignField: "_id",
-                    as: "cuestionario.clasificacion"
-                }
-            },
-            {
-                $unwind: { path: "$cuestionario.clasificacion", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-        ]);
+        const data = await obtenerDatosInspeccion(id);
         if (!data || data.length === 0) {
             return res.status(404).json({ message: 'Registro no encontrado' });
         }
 
         const inspeccion = data[0];
 
-        // Crear documento PDF
-        const doc = new PDFDocument({ margin: 50 });
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="inspeccion_${id}.pdf"`);
-        doc.pipe(res);
+        generarPDFInspeccion(id, inspeccion, res);
 
-        // Definir márgenes y anchos de columnas
-        const margin = 50;
-        const totalWidth2 = doc.page.width - 2 * margin; // Restar márgenes izquierdo y derecho
-        const colWidths2 = [totalWidth2 * 0.2, totalWidth2 * 0.4, totalWidth2 * 0.4]; // Columnas: fecha, datos, lugar
-        const smallColWidths = [totalWidth2 * 0.2, totalWidth2 * 0.4, totalWidth2 * 0.4]; // Visita, contacto, inspector
+    } catch (error) {
+        console.error('Error al generar el PDF:', error);
+        res.status(500).json({ message: 'Error interno del servidor', error });
+    }
+});
 
-        // Posición inicial
-        let startY2 = doc.y;
+//ruta para enviar el pdf por correo
+router.get('/enviar-pdf/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
 
-        // Función para dibujar una celda con texto
-        function drawCell(text, x, y, width, height, fontSize = 10) {
-            doc.rect(x, y, width, height).stroke(); // Dibuja el rectángulo
-            doc.fontSize(fontSize).text(text, x + 5, y + 5, { width: width - 10, align: 'left' }); // Ajusta el texto dentro de la celda
+        const data = await obtenerDatosInspeccion(id);
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Registro no encontrado' });
         }
 
-        // Crear cabeceras (primera fila)
-        doc.font('Helvetica-Bold'); // Cambiar a fuente en negrita
+        const inspeccion = data[0];
 
-        // Fecha, Cliente, Lugar (Cabeceras)
-        drawCell('Fecha', margin, startY2, colWidths2[0], 20);
-        drawCell('Cliente', margin + colWidths2[0], startY2, colWidths2[1], 20);
-        drawCell('Lugar', margin + colWidths2[0] + colWidths2[1], startY2, colWidths2[2], 20);
-        startY2 += 20;
+        const pdfBuffer = await generarPDFInspeccion(id, inspeccion, res);
 
-        // Crear los datos correspondientes (segunda fila)
-        // Función para capitalizar cada palabra correctamente
-        function capitalize(str) {
-            return str.split(' ').map(word => {
-                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-            }).join(' ');
-        }
-        doc.font('Helvetica'); // Cambiar a fuente en negrita
-        // Construir la dirección
-        const direccion = `${inspeccion.cliente.direccion.municipio}, ${inspeccion.cliente.direccion.estadoDom}`;
-        // Formatear la fecha como dd/mm/aaaa
-        const formattedDate = inspeccion.createdAt.toLocaleDateString('es-MX'); // dd/mm/aaaa en formato local
-        drawCell(formattedDate, margin, startY2, colWidths2[0], 20);
-        drawCell(inspeccion.cliente.nombre, margin + colWidths2[0], startY2, colWidths2[1], 20);
-        drawCell(capitalize(direccion), margin + colWidths2[0] + colWidths2[1], startY2, colWidths2[2], 20);
-        startY2 += 20;
-        doc.font('Helvetica-Bold'); // Cambiar a fuente en negrita
-        // Crear cabeceras (tercera fila)
-        drawCell('Frecuencia', margin, startY2, smallColWidths[0], 20);
-        drawCell('Contacto', margin + smallColWidths[0], startY2, smallColWidths[1], 20);
-        drawCell('Inspector', margin + smallColWidths[0] + smallColWidths[1], startY2, smallColWidths[2], 20);
-        startY2 += 20;
-        doc.font('Helvetica'); // Cambiar a fuente en negrita
-        // Crear los datos correspondientes (cuarta fila)
-        drawCell(inspeccion.cuestionario.frecuencia.nombre, margin, startY2, smallColWidths[0], 20);
-        drawCell(inspeccion.cliente.correo, margin + smallColWidths[0], startY2, smallColWidths[1], 20);
-        drawCell(inspeccion.usuario.nombre, margin + smallColWidths[0] + smallColWidths[1], startY2, smallColWidths[2], 20);
-        startY2 += 20;
-
-        // Ancho total del documento menos márgenes
-        const totalWidth = doc.page.width - 100; // Restar márgenes izquierdo y derecho (50px cada uno)
-
-        // Espacio antes de la siguiente sección
-        doc.moveDown(2);
-
-        const centerX = (doc.page.width - totalWidth) / 2; // Calcular el centro
-
-        doc.font('Helvetica-Bold'); // Fuente en negrita
-        // Título del reporte
-        doc.fontSize(13).text(("REPORTE DE INSPECCIONES A SISTEMA DE PROTECCIÓN CONTRA INCENDIO").toUpperCase(), centerX, doc.y, { align: 'center' });
-        doc.moveDown(0.5);
-
-        // Nombre de la encuesta
-        doc.fontSize(13).text((inspeccion.cuestionario.nombre).toUpperCase(), centerX, doc.y, { align: 'center' });
-
-        // Proporciones de las columnas ajustadas para aprovechar mejor el ancho
-        const colWidths = [
-            totalWidth * 0.50, // Columna de Pregunta (50%)
-            totalWidth * 0.35, // Columna de Observaciones (35%)
-            totalWidth * 0.15  // Columna de Respuesta (15%) - Reducida
-        ];
-
-        // Dibujar la tabla con los nuevos anchos
-        const startX = 50;  // Posición inicial en el eje X
-        let startY = doc.y; // Posición inicial en el eje Y
-
-        // Encabezado de la tabla en negrita
-        doc.font('Helvetica-Bold'); // Cambiar a fuente en negrita
-        doc.rect(startX, startY, colWidths[0], 25).stroke(); // Pregunta
-        doc.rect(startX + colWidths[0], startY, colWidths[1], 25).stroke(); // Observaciones
-        doc.rect(startX + colWidths[0] + colWidths[1], startY, colWidths[2], 25).stroke(); // Respuesta
-        doc.fontSize(12).text('Pregunta', startX + 5, startY + 8);
-        doc.text('Observaciones', startX + colWidths[0] + 5, startY + 8);
-        doc.text('Respuesta', startX + colWidths[0] + colWidths[1] + 5, startY + 8);
-        startY += 25;
-
-        // Restablecer la fuente a normal para el contenido
-        doc.font('Helvetica'); // Volver a la fuente normal para las filas de la tabla
-
-        // Función para ajustar el texto a la celda
-        function splitTextIntoLines(text, maxWidth) {
-            const lines = [];
-            let currentLine = '';
-
-            // Iterar sobre cada palabra y construir las líneas de texto
-            text.split(' ').forEach((word) => {
-                const testLine = currentLine ? currentLine + ' ' + word : word;
-                const width = doc.widthOfString(testLine);
-
-                if (width < maxWidth) {
-                    currentLine = testLine;
-                } else {
-                    lines.push(currentLine);
-                    currentLine = word;
-                }
-            });
-
-            if (currentLine) {
-                lines.push(currentLine); // Agregar la última línea
-            }
-
-            return lines;
-        }
-
-        // Contenido de la tabla
-        inspeccion.encuesta.forEach((pregunta, index) => {
-            const preguntaTexto = pregunta.pregunta;
-            const observaciones = pregunta.observaciones || 'Sin comentarios';
-            const respuesta = pregunta.respuesta.toLowerCase() === 'sí' ? 'Sí' : 'No';
-
-            // Dividir la pregunta en varias líneas si es necesario
-            const preguntaLines = splitTextIntoLines(preguntaTexto, colWidths[0] - 10);
-            const observacionesLines = splitTextIntoLines(observaciones, colWidths[1] - 10);
-            const respuestaLines = splitTextIntoLines(respuesta, colWidths[2] - 10);
-
-            // Calcular la altura de la fila con base en la cantidad de líneas
-            const maxLines = Math.max(preguntaLines.length, observacionesLines.length, respuestaLines.length);
-            const height = maxLines * 18;  // Aumentar la altura de la fila (ahora 18px por línea)
-
-            // Dibujar las celdas
-            doc.rect(startX, startY, colWidths[0], height).stroke(); // Pregunta
-            doc.rect(startX + colWidths[0], startY, colWidths[1], height).stroke(); // Observaciones
-            doc.rect(startX + colWidths[0] + colWidths[1], startY, colWidths[2], height).stroke(); // Respuesta
-
-            // Escribir el contenido
-            let lineY = startY + 8;
-            preguntaLines.forEach(line => {
-                doc.fontSize(10).text(line, startX + 5, lineY, { width: colWidths[0] - 10 });
-                lineY += 18;  // Aumentar el espacio entre líneas
-            });
-
-            lineY = startY + 8;
-            observacionesLines.forEach(line => {
-                doc.fontSize(10).text(line, startX + colWidths[0] + 5, lineY, { width: colWidths[1] - 10 });
-                lineY += 18;  // Aumentar el espacio entre líneas
-            });
-
-            lineY = startY + 8;
-            respuestaLines.forEach(line => {
-                doc.fontSize(10).text(line, startX + colWidths[0] + colWidths[1] + 5, lineY, { width: colWidths[2] - 10 });
-                lineY += 18;  // Aumentar el espacio entre líneas
-            });
-
-            startY += height; // Ajustar la posición para la siguiente fila
+        // Enviar correo solo si el registro es exitoso
+        const transporter = nodeMailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 587,
+            secure: false,
+            auth: {
+                user: "mxtvmasinfo@gmail.com",
+                pass: "edqggruseowfqemc",
+            },
         });
 
-        // Salto de página si es necesario antes de los comentarios
-        if (startY > 700) {
-            doc.addPage();
-            startY = 50;
-        }
+        const mailOptions = {
+            from: "EXTINTORES <mxtvmasinfo@gmail.com>",
+            to: inspeccion.cliente.correo,
+            subject: "ENCUESTA DE INSPECCION " + id,
+            text: "ENCUESTA DE INSPECCION " + id,
+            html: `<h1>Encuesta de inspeccion</h1>
+            <p>
+                <b>Inspector:</b> ${inspeccion.usuario.nombre}
+            </p>
+            <p>
+                <b>Cliente:</b> ${inspeccion.cliente.nombre}
+            </p>
+            <p>
+                <b>Tipo de inspeccion:</b> ${inspeccion.cuestionario.nombre}
+            </p>
+            <p>`,
+            attachments: [
+                {
+                    filename: `"Encuesta de inspeccion"_${id}.pdf`,
+                    content: pdfBuffer,
+                    contentType: "application/pdf",
+                },
+            ],
+        };
 
-        // Comentarios Generales (Sección independiente)
-        doc.moveDown(4);
-        doc.fontSize(12).text('Comentarios Generales:', centerX, doc.y, { align: 'left' }); // Título de comentarios
-        doc.fontSize(12).text(inspeccion.comentarios || 'Sin comentarios', centerX, doc.y, { align: 'left' }); // Comentarios
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                return res.status(500).json({ mensaje: "Error al enviar el correo", error: error.message });
+            }
+            console.log("Message sent: %s", info.messageId);
+            console.log("Preview URL: %s", nodeMailer.getTestMessageUrl(info));
 
-        // Finalizar PDF
-        doc.end();
+            // Responder solo después de que el correo se haya enviado con éxito
+            return res.status(200).json({ mensaje: "Correo enviado con exito", datos: data });
+        });
 
     } catch (error) {
         console.error('Error al generar el PDF:', error);
