@@ -1,136 +1,77 @@
 const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
-const PDFDocument = require('pdfkit');
-const { ObjectId } = require("mongoose").Types;
+const PDFDocument = require('pdfkit'); // Asegúrate de tener instalado pdfkit
+const { ObjectId } = require('mongodb');
+const fs = require('fs');
+const path = require('path');
+const pdfMake = require('pdfmake/build/pdfmake');  // Importar pdfmake para Node.js
+const vfsFonts = require('pdfmake/build/vfs_fonts');  // Importar las fuentes VFS
 
-router.get('/generar-pdf/:id', async (req, res) => {
+// Agregar las fuentes VFS al pdfMake
+  
+  // Crear el documento PDF
+  router.get('/generar-pdf/:id', (req, res) => {
+    const id = req.params.id;
+
     try {
-        const { id } = req.params;
-        const objectId = new ObjectId(id);
+        // Datos de la tabla
+        const datos = [
+            ['ID', 'Nombre', 'Edad'],
+            [1, 'Juan Pérez', 30],
+            [2, 'Ana García', 25],
+            [3, 'Luis Rodríguez', 35],
+        ];
 
-        const data = await inspecciones.aggregate([
-            { $match: { _id: objectId } },
-            {
-                $addFields: {
-                    idUsuarioObj: { $toObjectId: "$idUsuario" },
-                    idClienteObj: { $toObjectId: "$idCliente" },
-                    idEncuestaObj: { $toObjectId: "$idEncuesta" }
-                }
+        // Definición del documento PDF
+        const docDefinition = {
+            content: [
+                {
+                    text: `Reporte de Datos - ID: ${id}`,
+                    style: 'header',
+                    alignment: 'center',
+                },
+                {
+                    style: 'tableExample',
+                    table: {
+                        headerRows: 1,
+                        body: datos,
+                    },
+                },
+            ],
+            styles: {
+                header: {
+                    fontSize: 18,
+                    bold: true,
+                },
+                tableExample: {
+                    margin: [0, 5, 0, 15],
+                },
             },
-            {
-                $lookup: {
-                    from: "usuarios",
-                    localField: "idUsuarioObj",
-                    foreignField: "_id",
-                    as: "usuario"
-                }
-            },
-            { $unwind: { path: "$usuario", preserveNullAndEmptyArrays: true } },
-            {
-                $lookup: {
-                    from: "clientes",
-                    localField: "idClienteObj",
-                    foreignField: "_id",
-                    as: "cliente"
-                }
-            },
-            { $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } },
-            {
-                $lookup: {
-                    from: "encuestaInspeccion",
-                    localField: "idEncuestaObj",
-                    foreignField: "_id",
-                    as: "cuestionario"
-                }
-            },
-            { $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } }
-        ]);
+        };
 
-        if (!data || data.length === 0) {
-            return res.status(404).json({ message: 'Registro no encontrado' });
-        }
+        // Crear el documento PDF
+        const pdfDoc = pdfMake.createPdf(docDefinition);
 
-        const inspeccion = data[0];
+        // Guardar el PDF en el servidor (opcional)
+        const filePath = path.join(__dirname, 'tabla.pdf');
+        pdfDoc.getBuffer((buffer) => {
+            // Guardar el buffer como un archivo en el servidor
+            fs.writeFileSync(filePath, buffer);
 
-        const doc = new PDFDocument();
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="inspeccion_${id}.pdf"`);
-        doc.pipe(res);
-
-        // Título del documento
-        doc.fontSize(20).text(`Inspección ID: ${inspeccion._id}`, { align: 'center' });
-        doc.moveDown();
-
-        // Información del Usuario
-        doc.fontSize(14).text('Información del Usuario:', { underline: true });
-        doc.fontSize(12).text(`Nombre: ${inspeccion.usuario.nombre}`);
-        doc.text(`Email: ${inspeccion.usuario.email}`);
-        doc.moveDown();
-
-        // Información del Cliente
-        doc.fontSize(14).text('Información del Cliente:', { underline: true });
-        doc.fontSize(12).text(`Nombre: ${inspeccion.cliente.nombre}`);
-        doc.text(`Correo: ${inspeccion.cliente.correo}`);
-        doc.text(`Teléfono: ${inspeccion.cliente.telefono}`);
-        doc.text(`Dirección: ${inspeccion.cliente.direccion.calle}, ${inspeccion.cliente.direccion.nExterior}, ${inspeccion.cliente.direccion.colonia}`);
-        doc.moveDown();
-
-        // Información del Cuestionario
-        doc.fontSize(14).text('Encuesta:', { underline: true });
-        doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
-        doc.moveDown();
-
-        // Tabla de preguntas, observaciones y respuestas
-        doc.fontSize(14).text('Cuestionario:', { underline: true });
-        doc.moveDown();
-
-        // Establecer el ancho de las columnas
-        const columnWidth = [150, 150, 150]; // Ancho ajustado para cada columna
-        const rowHeight = 15; // Altura de las filas
-
-        // Encabezado de la tabla
-        doc.fontSize(12).text('Pregunta', 50, doc.y, { width: columnWidth[0], align: 'left' });
-        doc.text('Observaciones', 50 + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
-        doc.text('Respuesta', 50 + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
-        doc.moveDown();
-
-        // Línea separadora superior
-        doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
-
-        // Añadir las filas de las preguntas, observaciones y respuestas
-        inspeccion.encuesta.forEach((pregunta) => {
-            // Ajustar el texto en la columna de pregunta
-            doc.text(pregunta.pregunta, 50, doc.y, { width: columnWidth[0], align: 'left' });
-
-            // Ajustar el texto en la columna de observaciones
-            doc.text(pregunta.observaciones || 'Sin observaciones', 50 + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
-
-            // Ajustar el texto en la columna de respuesta
-            doc.text(pregunta.respuesta, 50 + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
-
-            // Dibuja las líneas de las celdas
-            doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0], doc.y).stroke();
-            doc.moveTo(50 + columnWidth[0], doc.y).lineTo(50 + columnWidth[0] + columnWidth[1], doc.y).stroke();
-            doc.moveTo(50 + columnWidth[0] + columnWidth[1], doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
-
-            // Moverse al siguiente espacio para la próxima fila
-            doc.moveDown(rowHeight);  // Espacio consistente
+            // Enviar el PDF como respuesta
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'attachment; filename="tabla.pdf"');
+            res.send(buffer);
         });
-
-        // Línea separadora inferior
-        doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
-
-        // Comentarios
-        doc.fontSize(14).text('Comentarios:', { underline: true });
-        doc.fontSize(12).text(inspeccion.comentarios || 'Sin comentarios');
-
-        // Finalizar el PDF
-        doc.end();
-
     } catch (error) {
         console.error('Error al generar el PDF:', error);
-        res.status(500).json({ message: 'Error interno del servidor', error });
+
+        // Enviar un error 500 si algo falla
+        res.status(500).json({
+            error: 'Hubo un problema al generar el PDF. Intente nuevamente.',
+            message: error.message,
+        });
     }
 });
 
