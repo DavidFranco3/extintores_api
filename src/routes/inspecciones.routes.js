@@ -2,13 +2,14 @@ const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const PDFDocument = require('pdfkit');
+const { ObjectId } = require("mongoose").Types;
 
 router.get('/generar-pdf/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
         // Convertir el id a ObjectId
-        const objectId = new mongoose.Types.ObjectId(id);
+        const objectId = new ObjectId(id);
 
         // Consulta con agregación y lookups
         const data = await inspecciones.aggregate([
