@@ -61,7 +61,7 @@ router.get("/listar", async (req, res) => {
                 }
             },
             {
-                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+                $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
             },
             {
                 $sort: { _id: -1 } // Ordenar por ID de forma descendente
