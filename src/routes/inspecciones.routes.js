@@ -3,7 +3,8 @@ const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const PDFDocument = require('pdfkit');
 
-router.get('/generar-pdf', (req, res) => {
+router.get('/generar-pdf/:id', (req, res) => {
+    const { id } = req.params;
     // Crear un nuevo documento PDF
     const doc = new PDFDocument();
 
@@ -12,7 +13,7 @@ router.get('/generar-pdf', (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
 
     // Escribir contenido en el PDF
-    doc.text('¡Hola, este es un PDF generado en Express.js!', {
+    doc.text('¡Hola, este es un PDF generado en Express.js!' + id, {
         align: 'center',
         fontSize: 20
     });
