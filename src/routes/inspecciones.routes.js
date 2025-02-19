@@ -7,15 +7,10 @@ const { ObjectId } = require("mongoose").Types;
 router.get('/generar-pdf/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        // Convertir el id a ObjectId
         const objectId = new ObjectId(id);
 
-        // Consulta con agregación y lookups
         const data = await inspecciones.aggregate([
-            {
-                $match: { _id: objectId }
-            },
+            { $match: { _id: objectId } },
             {
                 $addFields: {
                     idUsuarioObj: { $toObjectId: "$idUsuario" },
@@ -58,11 +53,9 @@ router.get('/generar-pdf/:id', async (req, res) => {
 
         const inspeccion = data[0];
 
-        // Crear un nuevo documento PDF
         const doc = new PDFDocument();
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="inspeccion_${id}.pdf"`);
-
         doc.pipe(res);
 
         // Título del documento
@@ -88,33 +81,45 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
         doc.moveDown();
 
-        // Definimos la tabla para preguntas, observaciones y respuestas
-        const columnWidths = [150, 150, 150]; // Ancho de las tres columnas
-        const startX = 50; // X inicial de la tabla
-        const startY = doc.y; // Y inicial para la tabla
+        // Tabla de preguntas, observaciones y respuestas
+        doc.fontSize(14).text('Cuestionario:', { underline: true });
+        doc.moveDown();
 
-        // Dibujamos el encabezado de la tabla
-        doc.fontSize(12)
-            .text('Pregunta', startX, startY, { width: columnWidths[0], align: 'center' })
-            .text('Observaciones', startX + columnWidths[0], startY, { width: columnWidths[1], align: 'center' })
-            .text('Respuesta', startX + columnWidths[0] + columnWidths[1], startY, { width: columnWidths[2], align: 'center' });
+        // Establecer el ancho de las columnas
+        const columnWidth = [150, 150, 150]; // Ancho ajustado para cada columna
+        const rowHeight = 15; // Altura de las filas
 
-        doc.moveDown(0.5); // Espacio entre el encabezado y las filas
+        // Encabezado de la tabla
+        doc.fontSize(12).text('Pregunta', 50, doc.y, { width: columnWidth[0], align: 'left' });
+        doc.text('Observaciones', 50 + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
+        doc.text('Respuesta', 50 + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
+        doc.moveDown();
 
-        // Dibujamos las filas de la tabla
-        inspeccion.encuesta.forEach((pregunta, index) => {
-            const rowHeight = 30;
-            const questionText = pregunta.pregunta.length > 50 ? pregunta.pregunta.substring(0, 50) + '...' : pregunta.pregunta;
-            const observationsText = pregunta.observaciones || 'Sin observaciones';
-            const answerText = pregunta.respuesta;
+        // Línea separadora superior
+        doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
-            doc.fontSize(10)
-                .text(questionText, startX, doc.y, { width: columnWidths[0], height: rowHeight })
-                .text(observationsText, startX + columnWidths[0], doc.y, { width: columnWidths[1], height: rowHeight })
-                .text(answerText, startX + columnWidths[0] + columnWidths[1], doc.y, { width: columnWidths[2], height: rowHeight });
+        // Añadir las filas de las preguntas, observaciones y respuestas
+        inspeccion.encuesta.forEach((pregunta) => {
+            // Ajustar el texto en la columna de pregunta
+            doc.text(pregunta.pregunta, 50, doc.y, { width: columnWidth[0], align: 'left' });
 
-            doc.moveDown(1); // Espacio entre filas
+            // Ajustar el texto en la columna de observaciones
+            doc.text(pregunta.observaciones || 'Sin observaciones', 50 + columnWidth[0], doc.y, { width: columnWidth[1], align: 'left' });
+
+            // Ajustar el texto en la columna de respuesta
+            doc.text(pregunta.respuesta, 50 + columnWidth[0] + columnWidth[1], doc.y, { width: columnWidth[2], align: 'left' });
+
+            // Dibuja las líneas de las celdas
+            doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0], doc.y).stroke();
+            doc.moveTo(50 + columnWidth[0], doc.y).lineTo(50 + columnWidth[0] + columnWidth[1], doc.y).stroke();
+            doc.moveTo(50 + columnWidth[0] + columnWidth[1], doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
+
+            // Moverse al siguiente espacio para la próxima fila
+            doc.moveDown(rowHeight);  // Espacio consistente
         });
+
+        // Línea separadora inferior
+        doc.moveTo(50, doc.y).lineTo(50 + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
         // Comentarios
         doc.fontSize(14).text('Comentarios:', { underline: true });
