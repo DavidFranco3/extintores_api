@@ -88,13 +88,35 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.fontSize(12).text(`Nombre: ${inspeccion.cuestionario.nombre}`);
         doc.moveDown();
 
-        // Preguntas y respuestas
+        // Preguntas, observaciones y respuestas en formato de tabla
         doc.fontSize(14).text('Cuestionario:', { underline: true });
+        doc.moveDown();
+
+        // Establecemos un borde simple para la tabla
+        const tableX = 50;
+        const tableY = doc.y;
+        const rowHeight = 20;
+        const columnWidth = [200, 200, 200]; // Ancho para cada columna
+
+        // Encabezado de la tabla
+        doc.fontSize(12).text('Pregunta', tableX, tableY);
+        doc.text('Observaciones', tableX + columnWidth[0], tableY);
+        doc.text('Respuesta', tableX + columnWidth[0] + columnWidth[1], tableY);
+        doc.moveDown();
+
+        // Línea separadora
+        doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
+
+        // Añadir las filas de las preguntas, observaciones y respuestas
         inspeccion.encuesta.forEach((pregunta, index) => {
-            doc.fontSize(12).text(`${index + 1}. ${pregunta.pregunta}`);
-            doc.text(`   Respuesta: ${pregunta.respuesta}`);
-            doc.moveDown(0.5);
+            doc.text(pregunta.pregunta, tableX, doc.y);
+            doc.text(pregunta.observaciones || 'Sin observaciones', tableX + columnWidth[0], doc.y);
+            doc.text(pregunta.respuesta, tableX + columnWidth[0] + columnWidth[1], doc.y);
+            doc.moveDown(rowHeight);
         });
+
+        // Línea final de la tabla
+        doc.moveTo(tableX, doc.y).lineTo(tableX + columnWidth[0] + columnWidth[1] + columnWidth[2], doc.y).stroke();
 
         // Comentarios
         doc.fontSize(14).text('Comentarios:', { underline: true });
