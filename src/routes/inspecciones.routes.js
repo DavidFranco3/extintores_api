@@ -93,21 +93,28 @@ router.get('/generar-pdf/:id', async (req, res) => {
         doc.moveDown();
 
         // Definir las columnas y el ancho
-        const columnWidth = [300, 150, 150]; // Ancho para las tres columnas
+        const columnWidth = [200, 150, 150]; // Ancho para las tres columnas
         const tableTop = doc.y; // Guardamos la posición inicial para la tabla
+        const rowHeight = 20; // Altura de cada fila
+        const spacing = 5; // Espacio entre filas
 
         // Encabezado de la tabla
         doc.fontSize(12).text('Pregunta', columnWidth[0], tableTop, { continued: true });
         doc.text('Observaciones', columnWidth[1], tableTop, { continued: true });
         doc.text('Respuesta', columnWidth[2], tableTop);
-        doc.moveDown();
+        doc.moveDown(0.5); // Espacio entre el encabezado y las filas
 
         // Dibujar las filas de la tabla
         inspeccion.encuesta.forEach((pregunta, index) => {
-            doc.text(pregunta.pregunta, columnWidth[0], doc.y, { continued: true });
-            doc.text(pregunta.observaciones || 'Sin observaciones', columnWidth[1], doc.y, { continued: true });
-            doc.text(pregunta.respuesta, columnWidth[2], doc.y);
-            doc.moveDown(0.5); // Espacio entre las filas
+            const questionText = pregunta.pregunta.length > 45 ? pregunta.pregunta.substring(0, 42) + '...' : pregunta.pregunta;
+            const observationsText = pregunta.observaciones ? pregunta.observaciones : 'Sin observaciones';
+            const answerText = pregunta.respuesta;
+
+            // Asegurarse de que el texto no se desborde
+            doc.text(questionText, columnWidth[0], doc.y, { continued: true });
+            doc.text(observationsText, columnWidth[1], doc.y, { continued: true });
+            doc.text(answerText, columnWidth[2], doc.y);
+            doc.moveDown(spacing); // Espacio entre las filas
         });
 
         doc.moveDown(); // Espacio después de la tabla
@@ -124,6 +131,7 @@ router.get('/generar-pdf/:id', async (req, res) => {
         res.status(500).json({ message: 'Error interno del servidor', error });
     }
 });
+
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
