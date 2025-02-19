@@ -1,80 +1,277 @@
 const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
-const PDFDocument = require('pdfkit'); // Asegúrate de tener instalado pdfkit
-const { ObjectId } = require('mongodb');
-const fs = require('fs');
-const path = require('path');
-const pdfMake = require('pdfmake/build/pdfmake');  // Importar pdfmake para Node.js
-const vfsFonts = require('pdfmake/build/vfs_fonts');  // Importar las fuentes VFS
+const PDFDocument = require('pdfkit');
+const { ObjectId } = require("mongoose").Types;
 
-// Agregar las fuentes VFS al pdfMake
-  
-  // Crear el documento PDF
-  router.get('/generar-pdf/:id', (req, res) => {
-    const id = req.params.id;
-
+router.get('/generar-pdf/:id', async (req, res) => {
     try {
-        // Datos de la tabla
-        const datos = [
-            ['ID', 'Nombre', 'Edad'],
-            [1, 'Juan Pérez', 30],
-            [2, 'Ana García', 25],
-            [3, 'Luis Rodríguez', 35],
+        const { id } = req.params;
+        const objectId = new ObjectId(id);
+
+        // Consulta con agregación y lookups
+        const data = await inspecciones.aggregate([
+            { $match: { _id: objectId } },
+            {
+                $addFields: {
+                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idUsuario a ObjectId
+                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idCliente a ObjectId
+                    idEncuestaObj: { $toObjectId: "$idEncuesta" }, // Convertir idEncuesta a ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "usuarios", // Colección de usuarios
+                    localField: "idUsuarioObj",
+                    foreignField: "_id",
+                    as: "usuario"
+                }
+            },
+            {
+                $unwind: { path: "$usuario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "clientes", // Colección de clientes
+                    localField: "idClienteObj",
+                    foreignField: "_id",
+                    as: "cliente"
+                }
+            },
+            {
+                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "encuestaInspeccion", // Colección de encuestas
+                    localField: "idEncuestaObj",
+                    foreignField: "_id",
+                    as: "cuestionario"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $addFields: {
+                    "cuestionario.idFrecuenciaObj": { $toObjectId: "$cuestionario.idFrecuencia" }, // Convertir idFrecuencia dentro de cuestionario a ObjectId
+                    "cuestionario.idClasificacionObj": { $toObjectId: "$cuestionario.idClasificacion" } // Convertir idClasificacion dentro de cuestionario a ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "frecuencias", // Colección de frecuencias
+                    localField: "cuestionario.idFrecuenciaObj", // Ahora usando el ObjectId de idFrecuencia
+                    foreignField: "_id",
+                    as: "cuestionario.frecuencia"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario.frecuencia", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "clasificaciones", // Colección de clasificaciones
+                    localField: "cuestionario.idClasificacionObj", // Ahora usando el ObjectId de idClasificacion
+                    foreignField: "_id",
+                    as: "cuestionario.clasificacion"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario.clasificacion", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+        ]);
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Registro no encontrado' });
+        }
+
+        const inspeccion = data[0];
+
+        // Crear documento PDF
+        const doc = new PDFDocument({ margin: 50 });
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="inspeccion_${id}.pdf"`);
+        doc.pipe(res);
+
+        // Definir márgenes y anchos de columnas
+        const margin = 50;
+        const totalWidth2 = doc.page.width - 2 * margin; // Restar márgenes izquierdo y derecho
+        const colWidths2 = [totalWidth2 * 0.2, totalWidth2 * 0.4, totalWidth2 * 0.4]; // Columnas: fecha, datos, lugar
+        const smallColWidths = [totalWidth2 * 0.2, totalWidth2 * 0.4, totalWidth2 * 0.4]; // Visita, contacto, inspector
+
+        // Posición inicial
+        let startY2 = doc.y;
+
+        // Función para dibujar una celda con texto
+        function drawCell(text, x, y, width, height, fontSize = 10) {
+            doc.rect(x, y, width, height).stroke(); // Dibuja el rectángulo
+            doc.fontSize(fontSize).text(text, x + 5, y + 5, { width: width - 10, align: 'left' }); // Ajusta el texto dentro de la celda
+        }
+
+        // Crear cabeceras (primera fila)
+        doc.font('Helvetica-Bold'); // Cambiar a fuente en negrita
+
+        // Fecha, Cliente, Lugar (Cabeceras)
+        drawCell('Fecha', margin, startY2, colWidths2[0], 20);
+        drawCell('Cliente', margin + colWidths2[0], startY2, colWidths2[1], 20);
+        drawCell('Lugar', margin + colWidths2[0] + colWidths2[1], startY2, colWidths2[2], 20);
+        startY2 += 20;
+
+        // Crear los datos correspondientes (segunda fila)
+        // Función para capitalizar cada palabra correctamente
+        function capitalize(str) {
+            return str.split(' ').map(word => {
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }).join(' ');
+        }
+        doc.font('Helvetica'); // Cambiar a fuente en negrita
+        // Construir la dirección
+        const direccion = `${inspeccion.cliente.direccion.municipio}, ${inspeccion.cliente.direccion.estadoDom}`;
+        // Formatear la fecha como dd/mm/aaaa
+        const formattedDate = inspeccion.createdAt.toLocaleDateString('es-MX'); // dd/mm/aaaa en formato local
+        drawCell(formattedDate, margin, startY2, colWidths2[0], 20);
+        drawCell(inspeccion.cliente.nombre, margin + colWidths2[0], startY2, colWidths2[1], 20);
+        drawCell(capitalize(direccion), margin + colWidths2[0] + colWidths2[1], startY2, colWidths2[2], 20);
+        startY2 += 20;
+        doc.font('Helvetica-Bold'); // Cambiar a fuente en negrita
+        // Crear cabeceras (tercera fila)
+        drawCell('Frecuencia', margin, startY2, smallColWidths[0], 20);
+        drawCell('Contacto', margin + smallColWidths[0], startY2, smallColWidths[1], 20);
+        drawCell('Inspector', margin + smallColWidths[0] + smallColWidths[1], startY2, smallColWidths[2], 20);
+        startY2 += 20;
+        doc.font('Helvetica'); // Cambiar a fuente en negrita
+        // Crear los datos correspondientes (cuarta fila)
+        drawCell(inspeccion.cuestionario.frecuencia.nombre, margin, startY2, smallColWidths[0], 20);
+        drawCell(inspeccion.cliente.correo, margin + smallColWidths[0], startY2, smallColWidths[1], 20);
+        drawCell(inspeccion.usuario.nombre, margin + smallColWidths[0] + smallColWidths[1], startY2, smallColWidths[2], 20);
+        startY2 += 20;
+
+        // Ancho total del documento menos márgenes
+        const totalWidth = doc.page.width - 100; // Restar márgenes izquierdo y derecho (50px cada uno)
+
+        // Espacio antes de la siguiente sección
+        doc.moveDown(2);
+
+        const centerX = (doc.page.width - totalWidth) / 2; // Calcular el centro
+
+        doc.font('Helvetica-Bold'); // Fuente en negrita
+        // Título del reporte
+        doc.fontSize(13).text(("REPORTE DE INSPECCIONES A SISTEMA DE PROTECCIÓN CONTRA INCENDIO").toUpperCase(), centerX, doc.y, { align: 'center' });
+        doc.moveDown(0.5);
+
+        // Nombre de la encuesta
+        doc.fontSize(13).text((inspeccion.cuestionario.nombre).toUpperCase(), centerX, doc.y, { align: 'center' });
+
+        // Proporciones de las columnas ajustadas para aprovechar mejor el ancho
+        const colWidths = [
+            totalWidth * 0.50, // Columna de Pregunta (50%)
+            totalWidth * 0.35, // Columna de Observaciones (35%)
+            totalWidth * 0.15  // Columna de Respuesta (15%) - Reducida
         ];
 
-        // Definición del documento PDF
-        const docDefinition = {
-            content: [
-                {
-                    text: `Reporte de Datos - ID: ${id}`,
-                    style: 'header',
-                    alignment: 'center',
-                },
-                {
-                    style: 'tableExample',
-                    table: {
-                        headerRows: 1,
-                        body: datos,
-                    },
-                },
-            ],
-            styles: {
-                header: {
-                    fontSize: 18,
-                    bold: true,
-                },
-                tableExample: {
-                    margin: [0, 5, 0, 15],
-                },
-            },
-        };
+        // Dibujar la tabla con los nuevos anchos
+        const startX = 50;  // Posición inicial en el eje X
+        let startY = doc.y; // Posición inicial en el eje Y
 
-        // Crear el documento PDF
-        const pdfDoc = pdfMake.createPdf(docDefinition);
+        // Encabezado de la tabla en negrita
+        doc.font('Helvetica-Bold'); // Cambiar a fuente en negrita
+        doc.rect(startX, startY, colWidths[0], 25).stroke(); // Pregunta
+        doc.rect(startX + colWidths[0], startY, colWidths[1], 25).stroke(); // Observaciones
+        doc.rect(startX + colWidths[0] + colWidths[1], startY, colWidths[2], 25).stroke(); // Respuesta
+        doc.fontSize(12).text('Pregunta', startX + 5, startY + 8);
+        doc.text('Observaciones', startX + colWidths[0] + 5, startY + 8);
+        doc.text('Respuesta', startX + colWidths[0] + colWidths[1] + 5, startY + 8);
+        startY += 25;
 
-        // Guardar el PDF en el servidor (opcional)
-        const filePath = path.join(__dirname, 'tabla.pdf');
-        pdfDoc.getBuffer((buffer) => {
-            // Guardar el buffer como un archivo en el servidor
-            fs.writeFileSync(filePath, buffer);
+        // Restablecer la fuente a normal para el contenido
+        doc.font('Helvetica'); // Volver a la fuente normal para las filas de la tabla
 
-            // Enviar el PDF como respuesta
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'attachment; filename="tabla.pdf"');
-            res.send(buffer);
+        // Función para ajustar el texto a la celda
+        function splitTextIntoLines(text, maxWidth) {
+            const lines = [];
+            let currentLine = '';
+
+            // Iterar sobre cada palabra y construir las líneas de texto
+            text.split(' ').forEach((word) => {
+                const testLine = currentLine ? currentLine + ' ' + word : word;
+                const width = doc.widthOfString(testLine);
+
+                if (width < maxWidth) {
+                    currentLine = testLine;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            });
+
+            if (currentLine) {
+                lines.push(currentLine); // Agregar la última línea
+            }
+
+            return lines;
+        }
+
+        // Contenido de la tabla
+        inspeccion.encuesta.forEach((pregunta, index) => {
+            const preguntaTexto = pregunta.pregunta;
+            const observaciones = pregunta.observaciones || 'N/A';
+            const respuesta = pregunta.respuesta.toLowerCase() === 'sí' ? 'Sí' : 'No';
+
+            // Dividir la pregunta en varias líneas si es necesario
+            const preguntaLines = splitTextIntoLines(preguntaTexto, colWidths[0] - 10);
+            const observacionesLines = splitTextIntoLines(observaciones, colWidths[1] - 10);
+            const respuestaLines = splitTextIntoLines(respuesta, colWidths[2] - 10);
+
+            // Calcular la altura de la fila con base en la cantidad de líneas
+            const maxLines = Math.max(preguntaLines.length, observacionesLines.length, respuestaLines.length);
+            const height = maxLines * 18;  // Aumentar la altura de la fila (ahora 18px por línea)
+
+            // Dibujar las celdas
+            doc.rect(startX, startY, colWidths[0], height).stroke(); // Pregunta
+            doc.rect(startX + colWidths[0], startY, colWidths[1], height).stroke(); // Observaciones
+            doc.rect(startX + colWidths[0] + colWidths[1], startY, colWidths[2], height).stroke(); // Respuesta
+
+            // Escribir el contenido
+            let lineY = startY + 8;
+            preguntaLines.forEach(line => {
+                doc.fontSize(10).text(line, startX + 5, lineY, { width: colWidths[0] - 10 });
+                lineY += 18;  // Aumentar el espacio entre líneas
+            });
+
+            lineY = startY + 8;
+            observacionesLines.forEach(line => {
+                doc.fontSize(10).text(line, startX + colWidths[0] + 5, lineY, { width: colWidths[1] - 10 });
+                lineY += 18;  // Aumentar el espacio entre líneas
+            });
+
+            lineY = startY + 8;
+            respuestaLines.forEach(line => {
+                doc.fontSize(10).text(line, startX + colWidths[0] + colWidths[1] + 5, lineY, { width: colWidths[2] - 10 });
+                lineY += 18;  // Aumentar el espacio entre líneas
+            });
+
+            startY += height; // Ajustar la posición para la siguiente fila
         });
+
+        // Salto de página si es necesario antes de los comentarios
+        if (startY > 700) {
+            doc.addPage();
+            startY = 50;
+        }
+
+        // Comentarios Generales (Sección independiente)
+        doc.moveDown(2);
+        doc.fontSize(12).text('Comentarios Generales:', centerX, doc.y, { align: 'left' }); // Título de comentarios
+        doc.fontSize(12).text(inspeccion.comentarios || 'Sin comentarios', centerX, doc.y, { align: 'left' }); // Comentarios
+
+        // Finalizar PDF
+        doc.end();
+
     } catch (error) {
         console.error('Error al generar el PDF:', error);
-
-        // Enviar un error 500 si algo falla
-        res.status(500).json({
-            error: 'Hubo un problema al generar el PDF. Intente nuevamente.',
-            message: error.message,
-        });
+        res.status(500).json({ message: 'Error interno del servidor', error });
     }
 });
-
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
@@ -99,14 +296,14 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $addFields: {
-                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idFrecuencia a ObjectId
-                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idClasificacion a ObjectId
-                    idEncuestaObj: { $toObjectId: "$idEncuesta" } // Convertir idClasificacion a ObjectId
+                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idUsuario a ObjectId
+                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idCliente a ObjectId
+                    idEncuestaObj: { $toObjectId: "$idEncuesta" }, // Convertir idEncuesta a ObjectId
                 }
             },
             {
                 $lookup: {
-                    from: "usuarios", // Colección de frecuencias
+                    from: "usuarios", // Colección de usuarios
                     localField: "idUsuarioObj",
                     foreignField: "_id",
                     as: "usuario"
@@ -117,7 +314,7 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $lookup: {
-                    from: "clientes", // Colección de clasificaciones
+                    from: "clientes", // Colección de clientes
                     localField: "idClienteObj",
                     foreignField: "_id",
                     as: "cliente"
@@ -128,7 +325,7 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $lookup: {
-                    from: "encuestaInspeccion", // Colección de clasificaciones
+                    from: "encuestaInspeccion", // Colección de encuestas
                     localField: "idEncuestaObj",
                     foreignField: "_id",
                     as: "cuestionario"
@@ -136,6 +333,34 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $addFields: {
+                    "cuestionario.idFrecuenciaObj": { $toObjectId: "$cuestionario.idFrecuencia" }, // Convertir idFrecuencia dentro de cuestionario a ObjectId
+                    "cuestionario.idClasificacionObj": { $toObjectId: "$cuestionario.idClasificacion" } // Convertir idClasificacion dentro de cuestionario a ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "frecuencias", // Colección de frecuencias
+                    localField: "cuestionario.idFrecuenciaObj", // Ahora usando el ObjectId de idFrecuencia
+                    foreignField: "_id",
+                    as: "cuestionario.frecuencia"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario.frecuencia", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "clasificaciones", // Colección de clasificaciones
+                    localField: "cuestionario.idClasificacionObj", // Ahora usando el ObjectId de idClasificacion
+                    foreignField: "_id",
+                    as: "cuestionario.clasificacion"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario.clasificacion", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
             },
             {
                 $sort: { _id: -1 } // Ordenar por ID de forma descendente
@@ -147,6 +372,7 @@ router.get("/listar", async (req, res) => {
         res.status(500).json({ message: "Error al obtener las encuestas", error });
     }
 });
+
 
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {

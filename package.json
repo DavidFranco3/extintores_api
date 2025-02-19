@@ -38,6 +38,7 @@
     "nodemailer": "^6.9.12",
     "pdfkit": "^0.14.0",
     "pdfmake": "^0.2.18",
+    "puppeteer": "^24.2.1",
     "serve-favicon": "2.5.0",
     "socket.io": "^4.7.5"
   },
