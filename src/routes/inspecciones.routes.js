@@ -94,7 +94,7 @@ const convertirEnlaceDropbox = (url) => {
 // 📌 Ruta para enviar imágenes en ZIP por correo
 router.get("/enviar-imagenes/:id/:email", async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id, email } = req.params;
 
         const data = await obtenerDatosInspeccion(id);
         if (!data || data.length === 0) {
