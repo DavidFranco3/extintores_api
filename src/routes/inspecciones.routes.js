@@ -114,14 +114,14 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $addFields: {
-                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idUsuario a ObjectId
-                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idCliente a ObjectId
-                    idEncuestaObj: { $toObjectId: "$idEncuesta" }, // Convertir idEncuesta a ObjectId
+                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idFrecuencia a ObjectId
+                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idClasificacion a ObjectId
+                    idEncuestaObj: { $toObjectId: "$idEncuesta" } // Convertir idClasificacion a ObjectId
                 }
             },
             {
                 $lookup: {
-                    from: "usuarios", // Colección de usuarios
+                    from: "usuarios", // Colección de frecuencias
                     localField: "idUsuarioObj",
                     foreignField: "_id",
                     as: "usuario"
@@ -132,7 +132,7 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $lookup: {
-                    from: "clientes", // Colección de clientes
+                    from: "clientes", // Colección de clasificaciones
                     localField: "idClienteObj",
                     foreignField: "_id",
                     as: "cliente"
@@ -143,7 +143,7 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $lookup: {
-                    from: "encuestaInspeccion", // Colección de encuestas
+                    from: "encuestaInspeccion", // Colección de clasificaciones
                     localField: "idEncuestaObj",
                     foreignField: "_id",
                     as: "cuestionario"
@@ -151,34 +151,6 @@ router.get("/listar", async (req, res) => {
             },
             {
                 $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-            {
-                $addFields: {
-                    "cuestionario.idFrecuenciaObj": { $toObjectId: "$cuestionario.idFrecuencia" }, // Convertir idFrecuencia dentro de cuestionario a ObjectId
-                    "cuestionario.idClasificacionObj": { $toObjectId: "$cuestionario.idClasificacion" } // Convertir idClasificacion dentro de cuestionario a ObjectId
-                }
-            },
-            {
-                $lookup: {
-                    from: "frecuencias", // Colección de frecuencias
-                    localField: "cuestionario.idFrecuenciaObj", // Ahora usando el ObjectId de idFrecuencia
-                    foreignField: "_id",
-                    as: "cuestionario.frecuencia"
-                }
-            },
-            {
-                $unwind: { path: "$cuestionario.frecuencia", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
-            },
-            {
-                $lookup: {
-                    from: "clasificaciones", // Colección de clasificaciones
-                    localField: "cuestionario.idClasificacionObj", // Ahora usando el ObjectId de idClasificacion
-                    foreignField: "_id",
-                    as: "cuestionario.clasificacion"
-                }
-            },
-            {
-                $unwind: { path: "$cuestionario.clasificacion", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
             },
             {
                 $sort: { _id: -1 } // Ordenar por ID de forma descendente
@@ -190,7 +162,6 @@ router.get("/listar", async (req, res) => {
         res.status(500).json({ message: "Error al obtener las encuestas", error });
     }
 });
-
 
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {
