@@ -2,6 +2,10 @@ const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const nodeMailer = require("nodemailer");
+const AdmZip = require("adm-zip");
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 const { obtenerDatosInspeccion, generarPDFInspeccion } = require('../utils/pdfGenerador'); // Importamos la función
 
 // Ruta para generar PDF
@@ -82,6 +86,67 @@ router.get('/enviar-pdf/:id', async (req, res) => {
     }
 });
 
+// 📌 Función para convertir enlaces de Dropbox a descarga directa
+const convertirEnlaceDropbox = (url) => {
+    return url.replace("dl=0", "dl=1");
+};
+
+// 📌 Ruta para descargar imágenes en ZIP
+router.get("/descargar-imagenes/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 📌 Buscar el registro en la BD
+        const orden = await inspecciones.findById(id);
+        if (!orden || !orden.imagenes || orden.imagenes.length === 0) {
+            return res.status(404).json({ error: "No se encontraron imágenes" });
+        }
+
+        // 📌 Crear ZIP
+        const zip = new AdmZip();
+        const tempDir = path.join(__dirname, "temp");
+
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir);
+        }
+
+        for (let i = 0; i < orden.imagenes.length; i++) {
+            let imageUrl = convertirEnlaceDropbox(orden.imagenes[i]);
+
+            try {
+                // 📌 Descargar imagen
+                const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+                const imageBuffer = Buffer.from(response.data);
+
+                // 📌 Guardar imagen temporalmente
+                const imagePath = path.join(tempDir, `imagen_${i + 1}.jpg`);
+                fs.writeFileSync(imagePath, imageBuffer);
+
+                // 📌 Agregar la imagen al ZIP
+                zip.addLocalFile(imagePath);
+            } catch (error) {
+                console.error(`Error al descargar la imagen: ${imageUrl}`, error.message);
+            }
+        }
+
+        // 📌 Guardar ZIP temporalmente
+        const zipPath = path.join(tempDir, `imagenes_${id}.zip`);
+        zip.writeZip(zipPath);
+
+        // 📌 Enviar ZIP para descargar
+        res.download(zipPath, `imagenes_${id}.zip`, (err) => {
+            if (err) console.error("Error al enviar el ZIP:", err);
+
+            // 📌 Eliminar archivos temporales
+            fs.unlinkSync(zipPath);
+            orden.imagenes.forEach((_, i) => fs.unlinkSync(path.join(tempDir, `imagen_${i + 1}.jpg`)));
+        });
+
+    } catch (error) {
+        console.error("Error al generar el ZIP:", error);
+        res.status(500).json({ error: "Error al generar el ZIP" });
+    }
+});
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
