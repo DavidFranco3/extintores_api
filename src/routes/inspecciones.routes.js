@@ -24,7 +24,6 @@ router.get('/generar-pdf/:id', async (req, res) => {
     }
 });
 
-//ruta para enviar el pdf por correo
 router.get('/enviar-pdf/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -36,9 +35,9 @@ router.get('/enviar-pdf/:id', async (req, res) => {
 
         const inspeccion = data[0];
 
+        // Asegúrate de que generarPDFInspeccion devuelva un Buffer en lugar de enviarlo en la respuesta
         const pdfBuffer = await generarPDFInspeccion(id, inspeccion, res);
 
-        // Enviar correo solo si el registro es exitoso
         const transporter = nodeMailer.createTransport({
             host: "smtp.gmail.com",
             port: 587,
@@ -52,22 +51,15 @@ router.get('/enviar-pdf/:id', async (req, res) => {
         const mailOptions = {
             from: "EXTINTORES <mxtvmasinfo@gmail.com>",
             to: inspeccion.cliente.correo,
-            subject: "ENCUESTA DE INSPECCION " + id,
-            text: "ENCUESTA DE INSPECCION " + id,
-            html: `<h1>Encuesta de inspeccion</h1>
-            <p>
-                <b>Inspector:</b> ${inspeccion.usuario.nombre}
-            </p>
-            <p>
-                <b>Cliente:</b> ${inspeccion.cliente.nombre}
-            </p>
-            <p>
-                <b>Tipo de inspeccion:</b> ${inspeccion.cuestionario.nombre}
-            </p>
-            <p>`,
+            subject: `ENCUESTA DE INSPECCIÓN ${id}`,
+            text: `ENCUESTA DE INSPECCIÓN ${id}`,
+            html: `<h1>Encuesta de Inspección</h1>
+            <p><b>Inspector:</b> ${inspeccion.usuario.nombre}</p>
+            <p><b>Cliente:</b> ${inspeccion.cliente.nombre}</p>
+            <p><b>Tipo de inspección:</b> ${inspeccion.cuestionario.nombre}</p>`,
             attachments: [
                 {
-                    filename: `"Encuesta de inspeccion"_${id}.pdf`,
+                    filename: `Encuesta_de_Inspección_${id}.pdf`,
                     content: pdfBuffer,
                     contentType: "application/pdf",
                 },
@@ -81,8 +73,7 @@ router.get('/enviar-pdf/:id', async (req, res) => {
             console.log("Message sent: %s", info.messageId);
             console.log("Preview URL: %s", nodeMailer.getTestMessageUrl(info));
 
-            // Responder solo después de que el correo se haya enviado con éxito
-            return res.status(200).json({ mensaje: "Correo enviado con exito", datos: data });
+            return res.status(200).json({ mensaje: "Correo enviado con éxito" });
         });
 
     } catch (error) {
@@ -90,6 +81,7 @@ router.get('/enviar-pdf/:id', async (req, res) => {
         res.status(500).json({ message: 'Error interno del servidor', error });
     }
 });
+
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
