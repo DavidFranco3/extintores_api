@@ -91,10 +91,17 @@ const convertirEnlaceDropbox = (url) => {
     return url.replace("dl=0", "dl=1");
 };
 
-// 📌 Ruta para descargar imágenes en ZIP
-router.get("/descargar-imagenes/:id", async (req, res) => {
+// 📌 Ruta para enviar imágenes en ZIP por correo
+router.get("/enviar-imagenes/:id/:email", async (req, res) => {
     try {
         const { id } = req.params;
+
+        const data = await obtenerDatosInspeccion(id);
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Registro no encontrado' });
+        }
+
+        const inspeccion = data[0];
 
         // 📌 Buscar el registro en la BD
         const orden = await inspecciones.findById(id);
@@ -133,18 +140,49 @@ router.get("/descargar-imagenes/:id", async (req, res) => {
         const zipPath = path.join(tempDir, `imagenes_${id}.zip`);
         zip.writeZip(zipPath);
 
-        // 📌 Enviar ZIP para descargar
-        res.download(zipPath, `imagenes_${id}.zip`, (err) => {
-            if (err) console.error("Error al enviar el ZIP:", err);
+        // 📌 Configuración de nodemailer
+        const transporter = nodeMailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 587,
+            secure: false,
+            auth: {
+                user: "mxtvmasinfo@gmail.com",
+                pass: "edqggruseowfqemc",
+            },
+        });
+
+        // 📌 Información del correo
+        const mailOptions = {
+            from: "EXTINTORES <mxtvmasinfo@gmail.com>",
+            to: email,
+            subject: 'Imágenes en ZIP',
+            text: 'Adjunto encontrarás el archivo ZIP con las imágenes solicitadas.',
+            attachments: [
+                {
+                    filename: `imagenes_${id}.zip`,
+                    path: zipPath,
+                },
+            ],
+        };
+
+        // 📌 Enviar correo
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error("Error al enviar el correo:", error);
+                return res.status(500).json({ error: "Error al enviar el correo" });
+            }
+            console.log("Correo enviado:", info.response);
 
             // 📌 Eliminar archivos temporales
             fs.unlinkSync(zipPath);
             orden.imagenes.forEach((_, i) => fs.unlinkSync(path.join(tempDir, `imagen_${i + 1}.jpg`)));
+
+            return res.status(200).json({ message: "Correo enviado con éxito" });
         });
 
     } catch (error) {
-        console.error("Error al generar el ZIP:", error);
-        res.status(500).json({ error: "Error al generar el ZIP" });
+        console.error("Error al generar el ZIP o enviar el correo:", error);
+        res.status(500).json({ error: "Error al generar el ZIP o enviar el correo" });
     }
 });
 
