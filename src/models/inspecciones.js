@@ -11,7 +11,7 @@ const inspecciones = new Schema({
   encuesta: { type: Array, default: [] },
   imagenes: { type: Array, default: [] },
   comentarios: { type: String },
-  firmaCliente: { type: String },
+  firmaCliente: { type: String, default: "" },
   estado: { type: String },
 }, {
   timestamps: true

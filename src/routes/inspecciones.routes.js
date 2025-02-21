@@ -101,8 +101,6 @@ router.get("/enviar-imagenes/:id/:email", async (req, res) => {
             return res.status(404).json({ message: 'Registro no encontrado' });
         }
 
-        const inspeccion = data[0];
-
         // 📌 Buscar el registro en la BD
         const orden = await inspecciones.findById(id);
         if (!orden || !orden.imagenes || orden.imagenes.length === 0) {
@@ -290,10 +288,10 @@ router.put("/deshabilitar/:id", async (req, res) => {
 // Actualizar datos de la orden de trabajo
 router.put("/actualizar/:id", async (req, res) => {
     const { id } = req.params;
-    const { idUsuario, idCliente, idEncuesta, encuesta, imagenes, comentarios } = req.body;
+    const { idUsuario, idCliente, idEncuesta, encuesta, imagenes, comentarios, firmaCliente } = req.body;
 
     await inspecciones
-        .updateOne({ _id: id }, { $set: { idUsuario, idCliente, idEncuesta, encuesta, imagenes, comentarios } })
+        .updateOne({ _id: id }, { $set: { idUsuario, idCliente, idEncuesta, encuesta, imagenes, comentarios, firmaCliente } })
         .then((data) => res.status(200).json({ mensaje: "Datos de la clasificacion actualizados" }))
         .catch((error) => res.json({ message: error }));
 });
