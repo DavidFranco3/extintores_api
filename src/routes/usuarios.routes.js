@@ -1,17 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const usuarios = require("../models/usuarios");
+const bcrypt = require("bcrypt");
 
 // Registro de usuarios
 router.post("/registro", async (req, res) => {
-    const { email } = req.body;
+    const { email, password } = req.body;
     const busqueda = await usuarios.findOne({ email });
     if (busqueda && busqueda.email === email) {
         return res
             .status(401)
             .json({ mensaje: "Ya existe un usuario con este correo" });
     } else {
-        const usuarioRegistrar = usuarios(req.body);
+        // Hashear la contraseña
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const usuarioRegistrar = new usuarios({
+            ...req.body,
+            password: hashedPassword  // Guardar la contraseña hasheada
+        });
         await usuarioRegistrar
             .save()
             .then((data) =>
@@ -48,7 +55,7 @@ router.get("/obtenerPorEmail/:email", async (req, res) => {
     const { email } = req.params;
     //console.log("buscando")
     usuarios
-        .findOne({email: email})
+        .findOne({ email: email })
         .then((data) => res.json(data))
         .catch((error) => res.json({ message: error }));
 });
