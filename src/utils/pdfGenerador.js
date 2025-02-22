@@ -2,6 +2,8 @@ const PDFDocument = require('pdfkit');
 const { ObjectId } = require("mongoose").Types;
 const inspecciones = require("../models/inspecciones");
 const streamBuffers = require('stream-buffers'); // Necesitas esta librería para crear el buffer
+const axios = require('axios');
+const fs = require('fs');
 
 const obtenerDatosInspeccion = async (id) => {
     try {
@@ -88,7 +90,51 @@ const obtenerDatosInspeccion = async (id) => {
     }
 };
 
-const generarPDFInspeccion = (id, inspeccion, res) => {
+const descargarImagen = async (url) => {
+    console.log(url);
+    try {
+        url = url.replace('dl=0', 'dl=1');
+
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+        // Verificar el tipo de imagen (esto es opcional, solo para asegurarte de que la imagen está bien)
+        const buffer = Buffer.from(response.data);
+        if (!buffer) {
+            throw new Error('Error al obtener el buffer de la imagen.');
+        }
+
+        return buffer;
+    } catch (error) {
+        console.error('Error al descargar la imagen:', error.message);
+        throw error;
+    }
+};
+
+
+const agregarFirmas = async (firmaClienteUrl, firmaInspectorUrl, startY, doc, margin) => {
+    console.log(firmaClienteUrl)
+    console.log(firmaInspectorUrl)
+    // Definir la altura para las firmas
+    const firmaHeight = 60; // Ajusta según el tamaño de las imágenes
+
+    const firmaClienteBuffer = await descargarImagen(firmaClienteUrl);
+    const firmaInspectorBuffer = await descargarImagen(firmaInspectorUrl);
+
+    // Cargar la firma del cliente (desde Dropbox)
+    doc.text('Firma del Cliente:', margin, startY);
+    doc.image(firmaClienteBuffer, margin, startY + 20, { width: 150, height: firmaHeight });
+
+    // Agregar la firma del inspector
+    doc.text('Firma del Inspector:', margin + 200, startY);
+    doc.image(firmaInspectorBuffer, margin + 200, startY + 20, { width: 150, height: firmaHeight });
+
+    // Actualizar la posición Y después de las firmas
+    startY += firmaHeight + 40; // Dejar espacio después de las firmas
+
+    return startY;
+};
+
+const generarPDFInspeccion = async (id, inspeccion, res) => {
     // Crear documento PDF
     const doc = new PDFDocument({
         font: "Courier",
@@ -282,6 +328,10 @@ const generarPDFInspeccion = (id, inspeccion, res) => {
     doc.moveDown(4);
     doc.fontSize(12).text('Comentarios Generales:', centerX, doc.y, { align: 'left' }); // Título de comentarios
     doc.fontSize(12).text(inspeccion.comentarios || 'Sin comentarios', centerX, doc.y, { align: 'left' }); // Comentarios
+    doc.moveDown(3);
+    const finalY = await agregarFirmas(inspeccion.firmaCliente, inspeccion.usuario.firma, doc.y, doc, margin);
+
+    doc.y = finalY;
 
     doc.flushPages();
     // Finalizar PDF
