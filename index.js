@@ -85,6 +85,7 @@ app.use("/encuestaInspeccion/", require("./src/routes/encuestaInspeccion.routes"
 app.use("/extintores/", require("./src/routes/extintores.routes"));
 app.use("/frecuencias/", require("./src/routes/frecuencias.routes"));
 app.use("/inspecciones/", require("./src/routes/inspecciones.routes"));
+app.use("/inspeccionesProximas/", require("./src/routes/inspeccionesProximas.routes"));
 app.use("/tiposExtintores/", require("./src/routes/tiposExtintores.routes"));
 
 app.use(notFound);

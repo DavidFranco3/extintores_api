@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const moment = require("moment-timezone");
 const { Schema } = mongoose;
 
-
 // modelo de la coleccion usuarios
 const inspeccionesProximas = new Schema({
   idFrecuencia: { type: String },
