@@ -86,6 +86,7 @@ app.use("/frecuencias/", require("./src/routes/frecuencias.routes"));
 app.use("/inspecciones/", require("./src/routes/inspecciones.routes"));
 app.use("/inspeccionesProximas/", require("./src/routes/inspeccionesProximas.routes"));
 app.use("/tiposExtintores/", require("./src/routes/tiposExtintores.routes"));
+app.use("/notificaciones/", require("./src/routes/notificaciones.routes"));
 
 app.use(notFound);
 app.use(Sentry.Handlers.errorHandler());
