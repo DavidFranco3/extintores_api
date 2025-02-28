@@ -5,6 +5,8 @@ const { Schema } = mongoose;
 // modelo de la coleccion usuarios
 const inspeccionesProximas = new Schema({
   idFrecuencia: { type: String },
+  idCliente: { type: String },
+  idEncuesta: { type: String },
   estado: { type: String },
 }, {
   timestamps: true

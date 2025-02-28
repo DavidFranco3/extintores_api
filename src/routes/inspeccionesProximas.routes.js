@@ -16,37 +16,115 @@ router.post("/registro", async (req, res) => {
         .catch((error) => res.json({ message: error }));
 });
 
-// Obtener todos los usuarios
 router.get("/listar", async (req, res) => {
     try {
         const data = await inspeccionesProximas.aggregate([
             {
-                $match: { estado: "true" } // Filtrar solo encuestas activas
+                $match: { estado: "true" } // Filtrar solo inspecciones activas
             },
             {
                 $addFields: {
-                    idFrecuenciaObj: { $toObjectId: "$idFrecuencia" } // Convertir idClasificacion a ObjectId
+                    idFrecuenciaObj: {
+                        $cond: {
+                            if: { $gt: [{ $strLenCP: { $ifNull: ["$idFrecuencia", ""] } }, 0] }, // Verificar si no está vacío
+                            then: { $toObjectId: "$idFrecuencia" },
+                            else: "$idFrecuencia"
+                        }
+                    },
+                    idEncuestaObj: {
+                        $cond: {
+                            if: { $gt: [{ $strLenCP: { $ifNull: ["$idEncuesta", ""] } }, 0] }, // Verificar si no está vacío
+                            then: { $toObjectId: "$idEncuesta" },
+                            else: "$idEncuesta"
+                        }
+                    },
+                    idClienteObj: {
+                        $cond: {
+                            if: { $gt: [{ $strLenCP: { $ifNull: ["$idCliente", ""] } }, 0] }, // Verificar si no está vacío
+                            then: { $toObjectId: "$idCliente" },
+                            else: "$idCliente"
+                        }
+                    }
                 }
             },
             {
+                $sort: { createdAt: -1 } // Ordenar de más reciente a más antiguo
+            },
+            {
+                $group: {
+                    _id: {
+                        idFrecuencia: "$idFrecuenciaObj",
+                        idEncuesta: "$idEncuestaObj",
+                        idCliente: "$idCliente"
+                    },
+                    doc: { $first: "$$ROOT" } // Obtener el documento más reciente de cada combinación idFrecuencia-idEncuesta
+                }
+            },
+            {
+                $replaceRoot: { newRoot: "$doc" } // Extraer el documento dentro de "doc"
+            },
+            {
                 $lookup: {
-                    from: "frecuencias", // Colección de frecuencias
+                    from: "frecuencias",
                     localField: "idFrecuenciaObj",
                     foreignField: "_id",
                     as: "frecuencia"
                 }
             },
             {
-                $unwind: { path: "$frecuencia", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+                $unwind: { path: "$frecuencia", preserveNullAndEmptyArrays: true } // 🔹 Convierte frecuencia de array a objeto
             },
             {
-                $sort: { _id: -1 } // Ordenar por ID de forma descendente
+                $lookup: {
+                    from: "encuestaInspeccion",
+                    localField: "idEncuestaObj",
+                    foreignField: "_id",
+                    as: "cuestionario"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true }
+            },
+            {
+                $lookup: {
+                    from: "clientes",
+                    localField: "idClienteObj",
+                    foreignField: "_id",
+                    as: "cliente"
+                }
+            },
+            {
+                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true }
+            },
+            {
+                $addFields: {
+                    cantidadDiasNum: { 
+                        $toInt: { 
+                            $ifNull: ["$frecuencia.cantidadDias", 0] 
+                        } 
+                    },
+                    nuevaInspeccion: {
+                        $dateAdd: {
+                            startDate: "$createdAt",
+                            unit: "day",
+                            amount: { 
+                                $toInt: { 
+                                    $ifNull: ["$frecuencia.cantidadDias", 0] 
+                                } 
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $sort: { _id: -1 } // Ordenar el resultado final por _id descendente
             }
         ]);
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ message: "Error al obtener las encuestas", error });
+        console.error("Error en /listar:", error);
+        res.status(500).json({ message: "Error al obtener las encuestas", error: error.message });
     }
 });
 

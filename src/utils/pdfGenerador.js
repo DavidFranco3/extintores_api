@@ -112,23 +112,48 @@ const descargarImagen = async (url) => {
 
 
 const agregarFirmas = async (firmaClienteUrl, firmaInspectorUrl, startY, doc, margin) => {
-    console.log(firmaClienteUrl)
-    console.log(firmaInspectorUrl)
+    console.log(firmaClienteUrl);
+    console.log(firmaInspectorUrl);
+
     // Definir la altura para las firmas
-    const firmaHeight = 60; // Ajusta según el tamaño de las imágenes
+    const firmaHeight = 60;
+    let firmaClienteBuffer = null;
+    let firmaInspectorBuffer = null;
 
-    const firmaClienteBuffer = await descargarImagen(firmaClienteUrl);
-    const firmaInspectorBuffer = await descargarImagen(firmaInspectorUrl);
+    try {
+        if (firmaClienteUrl) {
+            firmaClienteBuffer = await descargarImagen(firmaClienteUrl);
+        }
+    } catch (error) {
+        console.warn("No se pudo descargar la firma del cliente:", error.message);
+    }
 
-    // Cargar la firma del cliente (desde Dropbox)
+    try {
+        if (firmaInspectorUrl) {
+            firmaInspectorBuffer = await descargarImagen(firmaInspectorUrl);
+        }
+    } catch (error) {
+        console.warn("No se pudo descargar la firma del inspector:", error.message);
+    }
+
+    doc.moveDown(2); // Espacio antes de las firmas
+
+    // Siempre mostrar el texto de "Firma del Cliente"
     doc.text('Firma del Cliente:', margin, startY);
-    doc.image(firmaClienteBuffer, margin, startY + 20, { width: 150, height: firmaHeight });
+    if (firmaClienteBuffer) {
+        doc.image(firmaClienteBuffer, margin, startY + 20, { width: 150, height: firmaHeight });
+    } else {
+        doc.text('(Sin firma)', margin, startY + 30);
+    }
 
-    // Agregar la firma del inspector
+    // Siempre mostrar el texto de "Firma del Inspector"
     doc.text('Firma del Inspector:', margin + 200, startY);
-    doc.image(firmaInspectorBuffer, margin + 200, startY + 20, { width: 150, height: firmaHeight });
+    if (firmaInspectorBuffer) {
+        doc.image(firmaInspectorBuffer, margin + 200, startY + 20, { width: 150, height: firmaHeight });
+    } else {
+        doc.text('(Sin firma)', margin + 200, startY + 30);
+    }
 
-    // Actualizar la posición Y después de las firmas
     startY += firmaHeight + 40; // Dejar espacio después de las firmas
 
     return startY;

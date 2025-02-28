@@ -1,11 +1,10 @@
 const express = require("express");
 const enviarNotificacion = require("../../notifications");
-
-
 const router = express.Router();
 
 // 📌 Ruta para enviar notificaciones push
 router.post("/enviar", async (req, res) => {
+  console.log(req.body);
   const { token, titulo, mensaje } = req.body;
 
   if (!token || !titulo || !mensaje) {

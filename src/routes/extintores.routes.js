@@ -44,7 +44,6 @@ router.get("/listar", async (req, res) => {
                 $sort: { _id: -1 } // Ordenar por ID de forma descendente
             }
         ]);
-
         res.json(data);
     } catch (error) {
         res.status(500).json({ message: "Error al obtener los extintores", error });
