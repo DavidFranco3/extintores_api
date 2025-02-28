@@ -256,6 +256,53 @@ router.get("/listar", async (req, res) => {
     }
 });
 
+router.get("/listarDatosEncuesta/:idEncuesta", async (req, res) => {
+    const { idEncuesta } = req.params; // Obtenemos el idEncuesta del parámetro
+
+    try {
+        // Filtramos las inspecciones por idEncuesta y estado "true"
+        const data = await inspecciones
+            .find({ estado: "true", idEncuesta: idEncuesta })
+            .sort({ _id: -1 });
+
+        // Creamos un arreglo para almacenar las preguntas y su conteo
+        let resultados = [];
+
+        // Recorremos cada inspección y cada pregunta dentro de la encuesta
+        data.forEach((inspeccion) => {
+            inspeccion.encuesta.forEach((pregunta) => {
+                // Buscamos si la pregunta ya está en los resultados
+                let preguntaExistente = resultados.find(
+                    (resultado) => resultado.pregunta === pregunta.pregunta
+                );
+
+                if (!preguntaExistente) {
+                    // Si no existe, la agregamos al arreglo de resultados
+                    resultados.push({
+                        pregunta: pregunta.pregunta,
+                        si: pregunta.respuesta === "Si" ? 1 : 0,
+                        no: pregunta.respuesta === "No" ? 1 : 0,
+                    });
+                } else {
+                    // Si ya existe, simplemente actualizamos los contadores de "si" y "no"
+                    if (pregunta.respuesta === "Si") {
+                        preguntaExistente.si += 1;
+                    } else if (pregunta.respuesta === "No") {
+                        preguntaExistente.no += 1;
+                    }
+                }
+            });
+        });
+
+        // Respondemos con los resultados formateados
+        res.json(resultados);
+
+    } catch (error) {
+        res.json({ message: error });
+    }
+});
+
+
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {
     const { id } = req.params;
