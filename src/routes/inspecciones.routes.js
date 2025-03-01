@@ -302,7 +302,6 @@ router.get("/listarDatosEncuesta/:idEncuesta", async (req, res) => {
     }
 });
 
-
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {
     const { id } = req.params;
