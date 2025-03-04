@@ -87,7 +87,6 @@ app.use("/inspeccionesProximas/", require("./src/routes/inspeccionesProximas.rou
 app.use("/tiposExtintores/", require("./src/routes/tiposExtintores.routes"));
 app.use("/tokens/", require("./src/routes/tokens.routes"));
 app.use("/notificaciones/", require("./src/routes/notificaciones.routes"));
-app.use("/datosInspeccion/", require("./src/routes/datosInspeccion.routes"));
 
 app.use(notFound);
 app.use(Sentry.Handlers.errorHandler());
