@@ -5,7 +5,6 @@ const favicon = require("serve-favicon");
 const path = require("path");
 const morgan = require("morgan");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 
 require("./src/database");
 
@@ -64,7 +63,7 @@ app.all("*", (req, res, next) => {
 
 app.get("/", (_req, res) => {
   return res.status(200).json({
-    mensaje: "API del proyecto de laboratorio, Propiedad de ISOTECH MÉXICO",
+    mensaje: "API del proyecto de AGOO FIRE CONSULTANT, Propiedad de ISOTECH MÉXICO",
   });
 });
 
@@ -88,6 +87,7 @@ app.use("/inspeccionesProximas/", require("./src/routes/inspeccionesProximas.rou
 app.use("/tiposExtintores/", require("./src/routes/tiposExtintores.routes"));
 app.use("/tokens/", require("./src/routes/tokens.routes"));
 app.use("/notificaciones/", require("./src/routes/notificaciones.routes"));
+app.use("/datosInspeccion/", require("./src/routes/datosInspeccion.routes"));
 
 app.use(notFound);
 app.use(Sentry.Handlers.errorHandler());
