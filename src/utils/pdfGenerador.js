@@ -1,6 +1,8 @@
 const PDFDocument = require('pdfkit');
 const { ObjectId } = require("mongoose").Types;
 const inspecciones = require("../models/inspecciones");
+const path = require("path");
+const logo = path.join(__dirname, '../assets/logo_agoo.png');
 const streamBuffers = require('stream-buffers'); // Necesitas esta librería para crear el buffer
 const axios = require('axios');
 const fs = require('fs');
@@ -183,6 +185,12 @@ const generarPDFInspeccion = async (id, inspeccion, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="inspeccion_${id}.pdf"`);
     doc.pipe(res);
 
+    const logoPath = logo; // Ruta de la imagen
+    doc.image(logoPath, 50, 30, { width: 100 }); // Posiciona el logo en la esquina superior izquierda
+
+    // Mueve el cursor hacia abajo para evitar que el logo se superponga con el contenido
+    doc.moveDown(4);
+
     // Definir márgenes y anchos de columnas
     const margin = 50;
     const totalWidth2 = doc.page.width - 2 * margin; // Restar márgenes izquierdo y derecho
@@ -359,32 +367,9 @@ const generarPDFInspeccion = async (id, inspeccion, res) => {
     doc.y = finalY;
 
     doc.flushPages();
+
     // Finalizar PDF
     doc.end();
-
-    const totalPages = doc.bufferedPageRange().count; // Obtener total de páginas
-
-    for (let i = 0; i < totalPages; i++) {
-        doc.switchToPage(i); // Seleccionar página
-        const pageNumber = `Página ${i + 1} de ${totalPages}`;
-
-        doc
-            .font('Helvetica')
-            .fontSize(10)
-            .fillColor('gray')
-            .text(pageNumber, doc.page.width / 2 - 30, doc.page.height - 50, {
-                align: 'center'
-            });
-    }
-
-    return new Promise((resolve, reject) => {
-        bufferStream.on('finish', () => {
-            const pdfBuffer = bufferStream.getContents();
-            resolve(pdfBuffer);
-        });
-
-        bufferStream.on('error', reject);
-    });
 };
 
 module.exports = { obtenerDatosInspeccion, generarPDFInspeccion };
