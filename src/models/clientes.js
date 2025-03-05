@@ -6,6 +6,7 @@ const { Schema } = mongoose;
 const clientes = new Schema(
   {
     nombre: { type: String },
+    imagen: { type: String },
     correo: { type: String },
     telefono: { type: String },
     direccion: {

@@ -57,10 +57,10 @@ router.put("/deshabilitar/:id", async (req, res) => {
 // Actualizar datos de la orden de trabajo
 router.put("/actualizar/:id", async (req, res) => {
     const { id } = req.params;
-    const { nombre, correos, telefonos, empresa, direccion } = req.body;
+    const { nombre, imagen, correo, telefono, direccion } = req.body;
 
     await clientes
-        .updateOne({ _id: id }, { $set: { nombre, correos, telefonos, direccion } })
+        .updateOne({ _id: id }, { $set: { nombre, imagen, correo, telefono, direccion } })
         .then((data) => res.status(200).json({ mensaje: "Datos del cliente actualizados" }))
         .catch((error) => res.json({ message: error }));
 });
