@@ -161,6 +161,22 @@ const agregarFirmas = async (firmaClienteUrl, firmaInspectorUrl, startY, doc, ma
     return startY;
 };
 
+const agregarLogoCliente = async (logoCliente) => {
+    console.log(logoCliente);
+
+    let logoClienteBuffer = null;
+
+    try {
+        if (logoCliente) {
+            logoClienteBuffer = await descargarImagen(logoCliente);
+        }
+    } catch (error) {
+        console.log("No se pudo descargar el logo del cliente:", error.message);
+    }
+
+    return logoClienteBuffer;
+};
+
 const generarPDFInspeccion = async (id, inspeccion, res) => {
     // Crear documento PDF
     const doc = new PDFDocument({
@@ -186,9 +202,19 @@ const generarPDFInspeccion = async (id, inspeccion, res) => {
     doc.pipe(res);
 
     const logoPath = logo; // Ruta de la imagen
-    doc.image(logoPath, 50, 30, { width: 100 }); // Posiciona el logo en la esquina superior izquierda
-
-    // Mueve el cursor hacia abajo para evitar que el logo se superponga con el contenido
+    doc.image(logoPath, 50, 30, { width: 100 }); // Posiciona el primer logo en la esquina superior izquierda
+    
+    // Esperamos a que se descargue el logo del cliente
+    const logoCliente = await agregarLogoCliente(inspeccion?.cliente?.imagen);
+    
+    // Posiciona el segundo logo a la derecha, ajustando las coordenadas
+    const pageWidth = doc.page.width;  // Ancho de la página
+    const logoWidth = 100;  // Ancho del logo
+    const logoRightX = pageWidth - logoWidth - 50; // Calculamos la posición en X para que esté a la derecha (50 es el margen)
+    
+    doc.image(logoCliente, logoRightX, 30, { width: 100 }); // Posiciona el logo del cliente en la esquina superior derecha
+    
+    // Mueve el cursor hacia abajo para evitar que los logos se superpongan con el contenido
     doc.moveDown(4);
 
     // Definir márgenes y anchos de columnas
