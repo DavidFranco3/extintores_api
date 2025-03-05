@@ -1,7 +1,7 @@
 {
   "name": "extintores-api",
   "version": "1.0.0",
-  "description": "API del proyecto de AGOO FIRE CONSULTANT, Propiedad de ISOTECH MÉXICO",
+  "description": "API del proyecto de AGGO FIRE CONSULTANT, Propiedad de ISOTECH MÉXICO",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

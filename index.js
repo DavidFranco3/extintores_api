@@ -63,7 +63,7 @@ app.all("*", (req, res, next) => {
 
 app.get("/", (_req, res) => {
   return res.status(200).json({
-    mensaje: "API del proyecto de AGOO FIRE CONSULTANT, Propiedad de ISOTECH MÉXICO",
+    mensaje: "API del proyecto de AGGO FIRE CONSULTANT, Propiedad de ISOTECH MÉXICO",
   });
 });
 
@@ -75,18 +75,18 @@ app.use(cors());
 
 // Routes
 app.use(require("./src/routes/login.routes"));
-app.use("/usuarios/", require("./src/routes/usuarios.routes"));
-app.use("/logs/", require("./src/routes/logs.routes"));
-app.use("/clasificaciones/", require("./src/routes/clasificaciones.routes"));
-app.use("/clientes/", require("./src/routes/clientes.routes"));
-app.use("/encuestaInspeccion/", require("./src/routes/encuestaInspeccion.routes"));
-app.use("/extintores/", require("./src/routes/extintores.routes"));
-app.use("/frecuencias/", require("./src/routes/frecuencias.routes"));
-app.use("/inspecciones/", require("./src/routes/inspecciones.routes"));
-app.use("/inspeccionesProximas/", require("./src/routes/inspeccionesProximas.routes"));
-app.use("/tiposExtintores/", require("./src/routes/tiposExtintores.routes"));
-app.use("/tokens/", require("./src/routes/tokens.routes"));
-app.use("/notificaciones/", require("./src/routes/notificaciones.routes"));
+app.use("/usuarios/", verifyToken, require("./src/routes/usuarios.routes"));
+app.use("/logs/", verifyToken, require("./src/routes/logs.routes"));
+app.use("/clasificaciones/", verifyToken, require("./src/routes/clasificaciones.routes"));
+app.use("/clientes/", verifyToken, require("./src/routes/clientes.routes"));
+app.use("/encuestaInspeccion/", verifyToken, require("./src/routes/encuestaInspeccion.routes"));
+app.use("/extintores/", verifyToken, require("./src/routes/extintores.routes"));
+app.use("/frecuencias/", verifyToken, require("./src/routes/frecuencias.routes"));
+app.use("/inspecciones/", verifyToken, require("./src/routes/inspecciones.routes"));
+app.use("/inspeccionesProximas/", verifyToken, require("./src/routes/inspeccionesProximas.routes"));
+app.use("/tiposExtintores/", verifyToken, require("./src/routes/tiposExtintores.routes"));
+app.use("/tokens/", verifyToken, require("./src/routes/tokens.routes"));
+app.use("/notificaciones/", verifyToken, require("./src/routes/notificaciones.routes"));
 
 app.use(notFound);
 app.use(Sentry.Handlers.errorHandler());
