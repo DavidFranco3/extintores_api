@@ -7,7 +7,6 @@ const logonfpa = path.join(__dirname, '../assets/logo_nfpa.png');
 const streamBuffers = require('stream-buffers'); // Necesitas esta librería para crear el buffer
 const axios = require('axios');
 const fs = require('fs');
-const puppeteer = require('puppeteer');
 
 const obtenerDatosInspeccion = async (id) => {
     try {
@@ -421,40 +420,4 @@ const generarPDFInspeccion = async (id, inspeccion, res) => {
     doc.end();
 };
 
-const generarPDFInspeccion2 = async (id, inspeccion, res) => {
-    try {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-
-        // Contenido HTML que se va a convertir a PDF
-        const htmlContent = `
-          <html>
-            <head><title>Documento PDF</title></head>
-            <body>
-              <h1>Hola, esto es un PDF generado con Puppeteer</h1>
-              <p>Este es un párrafo de ejemplo.</p>
-            </body>
-          </html>
-        `;
-
-        await page.setContent(htmlContent);
-
-        // Genera el PDF como un buffer
-        const pdfBuffer = await page.pdf({ format: 'A4' });
-
-        await browser.close();
-
-        // Establecer las cabeceras correctamente
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline; filename=documento.pdf'); // Hace que se muestre en el navegador
-
-        // Enviar el PDF al navegador
-        res.send(pdfBuffer);
-    } catch (error) {
-        console.error('Error generando el PDF:', error);
-        res.status(500).send('Hubo un error al generar el PDF');
-    }
-};
-
-
-module.exports = { obtenerDatosInspeccion, generarPDFInspeccion, generarPDFInspeccion2 };
+module.exports = { obtenerDatosInspeccion, generarPDFInspeccion };
