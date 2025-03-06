@@ -2,11 +2,8 @@ const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const nodeMailer = require("nodemailer");
-const AdmZip = require("adm-zip");
-const axios = require("axios");
 const fs = require("fs");
-const path = require("path");
-const { obtenerDatosInspeccion, generarPDFInspeccion } = require('../utils/pdfGenerador'); // Importamos la función
+const { obtenerDatosInspeccion, generarPDFInspeccion, generarPDFInspeccion2 } = require('../utils/pdfGenerador'); // Importamos la función
 
 // Ruta para generar PDF
 router.get('/generar-pdf/:id', async (req, res) => {
@@ -20,7 +17,27 @@ router.get('/generar-pdf/:id', async (req, res) => {
 
         const inspeccion = data[0];
 
-        generarPDFInspeccion(id, inspeccion, res);
+        generarPDFInspeccion2(id, inspeccion, res);
+
+    } catch (error) {
+        console.error('Error al generar el PDF:', error);
+        res.status(500).json({ message: 'Error interno del servidor', error });
+    }
+});
+
+// Ruta para generar PDF
+router.get('/generar-pdf2/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const data = await obtenerDatosInspeccion(id);
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Registro no encontrado' });
+        }
+
+        const inspeccion = data[0];
+
+        generarPDFInspeccion2(id, inspeccion, res);
 
     } catch (error) {
         console.error('Error al generar el PDF:', error);

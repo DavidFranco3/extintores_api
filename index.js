@@ -82,7 +82,7 @@ app.use("/clientes/", verifyToken, require("./src/routes/clientes.routes"));
 app.use("/encuestaInspeccion/", verifyToken, require("./src/routes/encuestaInspeccion.routes"));
 app.use("/extintores/", verifyToken, require("./src/routes/extintores.routes"));
 app.use("/frecuencias/", verifyToken, require("./src/routes/frecuencias.routes"));
-app.use("/inspecciones/", verifyToken, require("./src/routes/inspecciones.routes"));
+app.use("/inspecciones/", require("./src/routes/inspecciones.routes"));
 app.use("/inspeccionesProximas/", verifyToken, require("./src/routes/inspeccionesProximas.routes"));
 app.use("/tiposExtintores/", verifyToken, require("./src/routes/tiposExtintores.routes"));
 app.use("/tokens/", verifyToken, require("./src/routes/tokens.routes"));

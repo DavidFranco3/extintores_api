@@ -3,9 +3,11 @@ const { ObjectId } = require("mongoose").Types;
 const inspecciones = require("../models/inspecciones");
 const path = require("path");
 const logo = path.join(__dirname, '../assets/logo_agoo.png');
+const logonfpa = path.join(__dirname, '../assets/logo_nfpa.png');
 const streamBuffers = require('stream-buffers'); // Necesitas esta librería para crear el buffer
 const axios = require('axios');
 const fs = require('fs');
+const puppeteer = require('puppeteer');
 
 const obtenerDatosInspeccion = async (id) => {
     try {
@@ -167,13 +169,24 @@ const agregarLogoCliente = async (logoCliente) => {
     let logoClienteBuffer = null;
 
     try {
+        // Verificar si logoCliente está definido antes de intentar descargar la imagen
         if (logoCliente) {
+            // Suponemos que descargarImagen devuelve un Buffer
             logoClienteBuffer = await descargarImagen(logoCliente);
+
+            // Validar si el buffer tiene datos válidos
+            if (!logoClienteBuffer || logoClienteBuffer.length === 0) {
+                throw new Error("El logo no tiene datos válidos.");
+            }
+        } else {
+            console.log("No se proporcionó logo de cliente, se continuará sin logo.");
         }
     } catch (error) {
-        console.log("No se pudo descargar el logo del cliente:", error.message);
+        // Manejamos cualquier error al descargar la imagen
+        console.error("Error al descargar el logo del cliente:", error.message);
     }
 
+    // Retornar el logo (o null si no se descargó correctamente)
     return logoClienteBuffer;
 };
 
@@ -203,17 +216,27 @@ const generarPDFInspeccion = async (id, inspeccion, res) => {
 
     const logoPath = logo; // Ruta de la imagen
     doc.image(logoPath, 50, 30, { width: 100 }); // Posiciona el primer logo en la esquina superior izquierda
-    
+
     // Esperamos a que se descargue el logo del cliente
     const logoCliente = await agregarLogoCliente(inspeccion?.cliente?.imagen);
-    
+    console.log(logoCliente);
+
     // Posiciona el segundo logo a la derecha, ajustando las coordenadas
     const pageWidth = doc.page.width;  // Ancho de la página
     const logoWidth = 100;  // Ancho del logo
     const logoRightX = pageWidth - logoWidth - 50; // Calculamos la posición en X para que esté a la derecha (50 es el margen)
-    
-    doc.image(logoCliente, logoRightX, 30, { width: 100 }); // Posiciona el logo del cliente en la esquina superior derecha
-    
+
+    if (logoCliente) {
+        try {
+            // Intentamos agregar la imagen solo si logoCliente es válido
+            doc.image(logoCliente, logoRightX, 30, { width: 100 });
+        } catch (error) {
+            // Si ocurre un error al agregar la imagen, mostramos un mensaje
+            console.error("Error al agregar la imagen del logo al PDF:", error.message);
+        }
+    } else {
+        // Si no hay logo, agregamos un texto o lo dejamos vacío
+    }
     // Mueve el cursor hacia abajo para evitar que los logos se superpongan con el contenido
     doc.moveDown(4);
 
@@ -398,4 +421,40 @@ const generarPDFInspeccion = async (id, inspeccion, res) => {
     doc.end();
 };
 
-module.exports = { obtenerDatosInspeccion, generarPDFInspeccion };
+const generarPDFInspeccion2 = async (id, inspeccion, res) => {
+    try {
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+
+        // Contenido HTML que se va a convertir a PDF
+        const htmlContent = `
+          <html>
+            <head><title>Documento PDF</title></head>
+            <body>
+              <h1>Hola, esto es un PDF generado con Puppeteer</h1>
+              <p>Este es un párrafo de ejemplo.</p>
+            </body>
+          </html>
+        `;
+
+        await page.setContent(htmlContent);
+
+        // Genera el PDF como un buffer
+        const pdfBuffer = await page.pdf({ format: 'A4' });
+
+        await browser.close();
+
+        // Establecer las cabeceras correctamente
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename=documento.pdf'); // Hace que se muestre en el navegador
+
+        // Enviar el PDF al navegador
+        res.send(pdfBuffer);
+    } catch (error) {
+        console.error('Error generando el PDF:', error);
+        res.status(500).send('Hubo un error al generar el PDF');
+    }
+};
+
+
+module.exports = { obtenerDatosInspeccion, generarPDFInspeccion, generarPDFInspeccion2 };
