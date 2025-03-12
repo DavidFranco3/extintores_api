@@ -2,7 +2,12 @@ const express = require("express");
 const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const nodeMailer = require("nodemailer");
+const multer = require('multer');
 const { obtenerDatosInspeccion, generarPDFInspeccion } = require('../utils/pdfGenerador'); // Importamos la función
+
+// Configuración de Multer para almacenar el archivo en memoria
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 // Ruta para generar PDF
 router.get('/generar-pdf/:id', async (req, res) => {
@@ -61,6 +66,66 @@ router.get('/enviar-pdf/:id', async (req, res) => {
                 {
                     filename: `Encuesta_de_Inspección_${id}.pdf`,
                     content: pdfBuffer,
+                    contentType: "application/pdf",
+                },
+            ],
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                return res.status(500).json({ mensaje: "Error al enviar el correo", error: error.message });
+            }
+            console.log("Message sent: %s", info.messageId);
+            console.log("Preview URL: %s", nodeMailer.getTestMessageUrl(info));
+
+            return res.status(200).json({ mensaje: "Correo enviado con éxito" });
+        });
+
+    } catch (error) {
+        console.error('Error al generar el PDF:', error);
+        res.status(500).json({ message: 'Error interno del servidor', error });
+    }
+});
+
+router.post('/enviar-pdf2/:id', upload.single('pdf'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pdfFile = req.file;  // El archivo PDF se recibe en req.file
+
+        const data = await obtenerDatosInspeccion(id);
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Registro no encontrado' });
+        }
+
+        const inspeccion = data[0];
+
+        if (!pdfFile) {
+            return res.status(400).json({ message: 'No se ha recibido el archivo PDF.' });
+        }
+
+        const transporter = nodeMailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 587,
+            secure: false,
+            auth: {
+                user: "mxtvmasinfo@gmail.com",
+                pass: "edqggruseowfqemc",
+            },
+        });
+
+        const mailOptions = {
+            from: "EXTINTORES <mxtvmasinfo@gmail.com>",
+            to: inspeccion.cliente.correo,
+            subject: `ENCUESTA DE INSPECCIÓN ${id}`,
+            text: `ENCUESTA DE INSPECCIÓN ${id}`,
+            html: `<h1>Encuesta de Inspección</h1>
+            <p><b>Inspector:</b> ${inspeccion.usuario.nombre}</p>
+            <p><b>Cliente:</b> ${inspeccion.cliente.nombre}</p>
+            <p><b>Tipo de inspección:</b> ${inspeccion.cuestionario.nombre}</p>`,
+            attachments: [
+                {
+                    filename: `Encuesta_de_Inspección_2_${id}.pdf`,
+                    content: pdfFile.buffer,
                     contentType: "application/pdf",
                 },
             ],
