@@ -9,6 +9,7 @@ const inspecciones = new Schema({
   idCliente: { type: String },
   idEncuesta: { type: String },
   encuesta: { type: Array, default: [] },
+  encuestaAbierta: { type: Array, default: [] },
   imagenes: { type: Array, default: [] },
   comentarios: { type: String },
   firmaCliente: { type: String },
