@@ -269,35 +269,58 @@ router.get("/listarDatosInspeccion/:id", async (req, res) => {
     const { id } = req.params;
 
     try {
-        const data = await inspecciones
-            .find({ estado: "true", _id: id})
-            .sort({ _id: -1 });
+        const data = await inspecciones.aggregate([
+            {
+                $match: { _id, id, estado: "true" } // Filtrar solo encuestas activas
+            },
+            {
+                $addFields: {
+                    idUsuarioObj: { $toObjectId: "$idUsuario" }, // Convertir idFrecuencia a ObjectId
+                    idClienteObj: { $toObjectId: "$idCliente" }, // Convertir idClasificacion a ObjectId
+                    idEncuestaObj: { $toObjectId: "$idEncuesta" } // Convertir idClasificacion a ObjectId
+                }
+            },
+            {
+                $lookup: {
+                    from: "usuarios", // Colección de frecuencias
+                    localField: "idUsuarioObj",
+                    foreignField: "_id",
+                    as: "usuario"
+                }
+            },
+            {
+                $unwind: { path: "$usuario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "clientes", // Colección de clasificaciones
+                    localField: "idClienteObj",
+                    foreignField: "_id",
+                    as: "cliente"
+                }
+            },
+            {
+                $unwind: { path: "$cliente", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $lookup: {
+                    from: "encuestaInspeccion", // Colección de clasificaciones
+                    localField: "idEncuestaObj",
+                    foreignField: "_id",
+                    as: "cuestionario"
+                }
+            },
+            {
+                $unwind: { path: "$cuestionario", preserveNullAndEmptyArrays: true } // Asegurar que sea un objeto
+            },
+            {
+                $sort: { _id: -1 } // Ordenar por ID de forma descendente
+            }
+        ]);
 
-        let resultados = [];
-
-        data.forEach((inspeccion) => {
-            inspeccion.encuestaAbierta.forEach((pregunta) => {
-                // Separar los valores por coma y convertir a números
-                const valores = pregunta.respuesta.split(",").map((valor) => parseFloat(valor.trim()));
-
-                // Crear un objeto por cada valor
-                valores.forEach((valor) => {
-                    resultados.push({
-                        pregunta: pregunta.pregunta,
-                        valor: valor
-                    });
-                });
-            });
-        });
-
-        res.json(resultados);
-
+        res.json(data);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            message: "Ocurrió un error al obtener los datos de la encuesta.",
-            error: error.message,
-        });
+        res.status(500).json({ message: "Error al obtener las encuestas", error });
     }
 });
 
