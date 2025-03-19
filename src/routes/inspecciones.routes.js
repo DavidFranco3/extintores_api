@@ -265,6 +265,44 @@ router.get("/listarDatosEncuesta/:idEncuesta", async (req, res) => {
     }
 });
 
+router.get("/listarDatosInspeccion/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const data = await inspecciones
+            .find({ estado: "true", _id: id})
+            .sort({ _id: -1 });
+
+        let resultados = [];
+
+        data.forEach((inspeccion) => {
+            inspeccion.encuestaAbierta.forEach((pregunta) => {
+                // Separar los valores por coma y convertir a números
+                const valores = pregunta.respuesta.split(",").map((valor) => parseFloat(valor.trim()));
+
+                // Crear un objeto por cada valor
+                valores.forEach((valor) => {
+                    resultados.push({
+                        pregunta: pregunta.pregunta,
+                        valor: valor
+                    });
+                });
+            });
+        });
+
+        res.json(resultados);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Ocurrió un error al obtener los datos de la encuesta.",
+            error: error.message,
+        });
+    }
+});
+
+
+
 // Obtener un usuario en especifico
 router.get("/obtener/:id", async (req, res) => {
     const { id } = req.params;
