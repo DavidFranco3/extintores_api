@@ -271,7 +271,7 @@ router.get("/listarDatosInspeccion/:id", async (req, res) => {
     try {
         const data = await inspecciones.aggregate([
             {
-                $match: { _id, id, estado: "true" } // Filtrar solo encuestas activas
+                $match: { _id: id, estado: "true" } // Filtrar solo encuestas activas
             },
             {
                 $addFields: {
