@@ -15,7 +15,11 @@ router.post('/login', async (req, res) => {
     if (!usuarios) return res.status(401).json({ mensaje: "Usuario no registrado" });
     if (usuarios.estado === "true") {
         if (usuarios.email !== email) return res.status(401).json({ mensaje: "Usuario Incorrecto" });
-        if (usuarios.password !== password) return res.status(401).json({ mensaje: "Contraseña Incorrecta" });
+        const isMatch = await bcrypt.compare(password, usuarios.password);
+        if (!isMatch) {
+            return res.status(401).json({ mensaje: "Contraseña Incorrecta" });
+        }
+
         const token = await jwt.sign({ _: usuarios._id }, 'secretkey', {
             expiresIn: 86400
         });
