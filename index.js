@@ -86,7 +86,7 @@ app.use("/inspecciones/", verifyToken, require("./src/routes/inspecciones.routes
 app.use("/inspeccionesProximas/", verifyToken, require("./src/routes/inspeccionesProximas.routes"));
 app.use("/tiposExtintores/", verifyToken, require("./src/routes/tiposExtintores.routes"));
 app.use("/tokens/", verifyToken, require("./src/routes/tokens.routes"));
-app.use("/notificaciones/", require("./src/routes/notificaciones.routes"));
+app.use("/notificaciones/", verifyToken, require("./src/routes/notificaciones.routes"));
 app.use("/inspeccionAnual/", verifyToken, require("./src/routes/inspeccionAnual.routes"));
 
 app.use(notFound);
