@@ -86,15 +86,13 @@ app.use("/inspecciones/", verifyToken, require("./src/routes/inspecciones.routes
 app.use("/inspeccionesProximas/", verifyToken, require("./src/routes/inspeccionesProximas.routes"));
 app.use("/tiposExtintores/", verifyToken, require("./src/routes/tiposExtintores.routes"));
 app.use("/tokens/", verifyToken, require("./src/routes/tokens.routes"));
-app.use("/notificaciones/", verifyToken, require("./src/routes/notificaciones.routes"));
-app.use("/encuestaDatosInspeccion/", verifyToken, require("./src/routes/encuestaDatosInspeccion.routes"));
+app.use("/notificaciones/", require("./src/routes/notificaciones.routes"));
 app.use("/inspeccionAnual/", verifyToken, require("./src/routes/inspeccionAnual.routes"));
 
 app.use(notFound);
 app.use(Sentry.Handlers.errorHandler());
 app.use(handleErrors);
 
-// Inicio del servidor en modo local
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
