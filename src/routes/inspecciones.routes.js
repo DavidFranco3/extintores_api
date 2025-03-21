@@ -3,6 +3,7 @@ const router = express.Router();
 const inspecciones = require("../models/inspecciones");
 const nodeMailer = require("nodemailer");
 const multer = require('multer');
+const { ObjectId } = require("mongoose").Types;
 const { obtenerDatosInspeccion, generarPDFInspeccion } = require('../utils/pdfGenerador'); // Importamos la función
 
 // Configuración de Multer para almacenar el archivo en memoria
@@ -271,7 +272,7 @@ router.get("/listarDatosInspeccion/:id", async (req, res) => {
     try {
         const data = await inspecciones.aggregate([
             {
-                $match: { _id: id, estado: "true" } // Filtrar solo encuestas activas
+                $match: { _id: new ObjectId(id), estado: "true" } // Filtrar solo encuestas activas
             },
             {
                 $addFields: {
@@ -317,7 +318,6 @@ router.get("/listarDatosInspeccion/:id", async (req, res) => {
                 $sort: { _id: -1 } // Ordenar por ID de forma descendente
             }
         ]);
-
         res.json(data);
     } catch (error) {
         res.status(500).json({ message: "Error al obtener las encuestas", error });
